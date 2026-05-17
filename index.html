@@ -519,6 +519,16 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!--
+  =====================================================================
+  INVERTED BARCODE FALLBACK LIBRARY — zxing-js/browser (pure JS, no WASM)
+  Used specifically to catch light-on-dark DataMatrix/QR codes (e.g.
+  white-on-black GS1 DataMatrix labels like Zepbound).
+  TO REMOVE: delete this script tag AND the "INVERTED BARCODE FALLBACK"
+  block inside startH5QScanner() further down in the JS.
+  =====================================================================
+-->
+<script src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
@@ -666,16 +676,24 @@ async function startH5QScanner(elementId, target) {
       () => {}
     );
 
-    // Inverted-frame fallback using native BarcodeDetector (no WASM, works on iOS)
-    // Catches light-on-dark DataMatrix/QR (e.g. Zepbound white-on-black GS1 DataMatrix)
-    let invertDetector = null;
-    if ('BarcodeDetector' in window) {
+    // =====================================================================
+    // INVERTED BARCODE FALLBACK — runs in parallel with the main scanner
+    // Uses zxing-js/browser (pure JS, no WASM) to decode pixel-inverted
+    // frames, catching light-on-dark DataMatrix/QR (e.g. Zepbound labels).
+    // TO REMOVE: delete from here to the matching END comment below,
+    // and delete the <script> tag for @zxing/browser in the <head>.
+    // =====================================================================
+    let zxingInvertReader = null;
+    if (typeof ZXingBrowser !== 'undefined') {
       try {
-        const supported = await BarcodeDetector.getSupportedFormats();
-        invertDetector = new BarcodeDetector({ formats: supported });
+        const hints = new Map();
+        // Tell ZXing to try harder — important for small/dense DataMatrix
+        hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
+        zxingInvertReader = new ZXingBrowser.MultiFormatReader();
+        zxingInvertReader.setHints(hints);
       } catch(e) {}
     }
-    if (invertDetector) {
+    if (zxingInvertReader) {
       const scanEl = document.getElementById(elementId);
       html5QrScanner._invertInterval = setInterval(async () => {
         try {
@@ -685,7 +703,7 @@ async function startH5QScanner(elementId, target) {
           c.width = videoEl.videoWidth; c.height = videoEl.videoHeight;
           const ctx = c.getContext('2d');
           ctx.drawImage(videoEl, 0, 0);
-          // Invert RGB, leave alpha
+          // Invert RGB channels, leave alpha unchanged
           const img = ctx.getImageData(0, 0, c.width, c.height);
           for (let i = 0; i < img.data.length; i += 4) {
             img.data[i]   = 255 - img.data[i];
@@ -693,19 +711,29 @@ async function startH5QScanner(elementId, target) {
             img.data[i+2] = 255 - img.data[i+2];
           }
           ctx.putImageData(img, 0, 0);
-          const results = await invertDetector.detect(c);
-          if (results && results.length > 0) {
-            const val = results[0].rawValue;
-            const fmt = results[0].format || 'inverted';
+          // Attempt decode on inverted frame
+          const luminanceSource = new ZXingBrowser.HTMLCanvasElementLuminanceSource(c);
+          const binaryBitmap = new ZXingBrowser.BinaryBitmap(
+            new ZXingBrowser.HybridBinarizer(luminanceSource)
+          );
+          const result = zxingInvertReader.decode(binaryBitmap);
+          if (result && result.getText()) {
+            const val = result.getText();
+            const fmt = result.getBarcodeFormat
+              ? ZXingBrowser.BarcodeFormat[result.getBarcodeFormat()] + ' (inverted)'
+              : 'Inverted';
             clearInterval(html5QrScanner._invertInterval);
             stopH5QScanner().then(() => {
               if (target === 'location') onLocationScanned(val);
-              else onBarcodeScanned(val, fmt + ' (inverted)');
+              else onBarcodeScanned(val, fmt);
             });
           }
-        } catch(e) {}
+        } catch(e) {} // ZXing throws on no-result, safe to swallow
       }, 300);
     }
+    // =====================================================================
+    // END INVERTED BARCODE FALLBACK
+    // =====================================================================
   } catch(e) {
     html5QrScanner = null;
     throw e;
