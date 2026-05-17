@@ -502,7 +502,6 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1.3.0/dist/iife/zxing-wasm.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
@@ -517,7 +516,6 @@ let currentPharmacy = '', currentLocation = '', currentUser = '';
 let currentScanType = null;
 let html5QrScanner = null;   // active Html5Qrcode instance
 let scannerTarget = null;    // 'location' | 'barcode'
-let zxingReader = null;      // ZXing instance for inverted-frame fallback
 let sessionScans = [];
 let isOnline = navigator.onLine;
 
@@ -651,13 +649,16 @@ async function startH5QScanner(elementId, target) {
       () => {}
     );
 
-    // Inverted-frame fallback: catches light-on-dark DataMatrix and QR codes
-    // (e.g. Zepbound white-on-black GS1 DataMatrix labels)
-    // Initialise ZXing lazily then run a parallel decode loop on inverted pixels
-    if (typeof ZXingWASM !== 'undefined' && !zxingReader) {
-      try { zxingReader = await ZXingWASM.getInstance(); } catch(e) {}
+    // Inverted-frame fallback using native BarcodeDetector (no WASM, works on iOS)
+    // Catches light-on-dark DataMatrix/QR (e.g. Zepbound white-on-black GS1 DataMatrix)
+    let invertDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        const supported = await BarcodeDetector.getSupportedFormats();
+        invertDetector = new BarcodeDetector({ formats: supported });
+      } catch(e) {}
     }
-    if (zxingReader) {
+    if (invertDetector) {
       const scanEl = document.getElementById(elementId);
       html5QrScanner._invertInterval = setInterval(async () => {
         try {
@@ -667,20 +668,18 @@ async function startH5QScanner(elementId, target) {
           c.width = videoEl.videoWidth; c.height = videoEl.videoHeight;
           const ctx = c.getContext('2d');
           ctx.drawImage(videoEl, 0, 0);
+          // Invert RGB, leave alpha
           const img = ctx.getImageData(0, 0, c.width, c.height);
-          // Invert RGB channels, leave alpha alone
           for (let i = 0; i < img.data.length; i += 4) {
             img.data[i]   = 255 - img.data[i];
             img.data[i+1] = 255 - img.data[i+1];
             img.data[i+2] = 255 - img.data[i+2];
           }
-          const results = await zxingReader.readBarcodes(img, {
-            tryHarder: true,
-            formats: ['QRCode','DataMatrix','Code128','Code39','EAN13','EAN8','PDF417','Aztec','DataBar','DataBarExpanded']
-          });
+          ctx.putImageData(img, 0, 0);
+          const results = await invertDetector.detect(c);
           if (results && results.length > 0) {
-            const val = results[0].text;
-            const fmt = results[0].format || 'Inverted';
+            const val = results[0].rawValue;
+            const fmt = results[0].format || 'inverted';
             clearInterval(html5QrScanner._invertInterval);
             stopH5QScanner().then(() => {
               if (target === 'location') onLocationScanned(val);
