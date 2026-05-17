@@ -793,8 +793,8 @@ async function startLocScan() {
   } catch(e) {
     document.getElementById('loc-video-wrapper').classList.remove('visible');
     document.getElementById('loc-scanning-label').classList.remove('visible');
-    showToast('Camera unavailable — enter manually', '#BA7517');
-    document.getElementById('manual-loc-area').classList.add('visible');
+    showToast('Camera unavailable — enter manually below', '#BA7517');
+    document.getElementById('manual-loc-input').focus();
   }
 }
 
@@ -821,7 +821,6 @@ async function onLocationScanned(val) {
   lv.style.display = 'block'; lv.textContent = val;
   document.getElementById('btn-to-scan').style.display    = 'flex';
   document.getElementById('btn-rescan-loc').style.display = 'flex';
-  document.getElementById('manual-loc-area').classList.remove('visible');
   document.getElementById('already-scanned-banner').style.display = 'none';
   showToast('Location scanned ✓');
   checkPriorScans(val);
