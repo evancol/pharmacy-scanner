@@ -362,6 +362,15 @@
     <button class="btn" id="btn-rescan-loc" style="display:none;" onclick="resetLocScan()">
       <i class="ti ti-refresh" aria-hidden="true"></i> Rescan location
     </button>
+
+    <!-- Already scanned warning -->
+    <div id="already-scanned-banner" style="display:none; background:#FAEEDA; border:0.5px solid #EF9F27; border-radius:var(--radius-lg); padding:0.875rem 1rem;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <i class="ti ti-clock-exclamation" style="font-size:16px; color:#BA7517; flex-shrink:0;" aria-hidden="true"></i>
+        <span style="font-size:13px; font-weight:600; color:#633806;">This location has prior scans</span>
+      </div>
+      <div id="already-scanned-detail" style="font-size:12px; color:#633806; padding-left:24px;"></div>
+    </div>
   </div>
 
   <!-- SCREEN 3: Scanning -->
@@ -802,7 +811,7 @@ function confirmManualLoc() {
   onLocationScanned(val);
 }
 
-function onLocationScanned(val) {
+async function onLocationScanned(val) {
   stopLocCamera();
   currentLocation = val;
   document.getElementById('loc-zone').classList.add('success');
@@ -810,10 +819,33 @@ function onLocationScanned(val) {
   document.getElementById('loc-zone-label').style.display = 'none';
   const lv = document.getElementById('loc-zone-value');
   lv.style.display = 'block'; lv.textContent = val;
-  document.getElementById('btn-to-scan').style.display   = 'flex';
+  document.getElementById('btn-to-scan').style.display    = 'flex';
   document.getElementById('btn-rescan-loc').style.display = 'flex';
   document.getElementById('manual-loc-area').classList.remove('visible');
+  document.getElementById('already-scanned-banner').style.display = 'none';
   showToast('Location scanned ✓');
+  checkPriorScans(val);
+}
+
+async function checkPriorScans(location) {
+  if (!isOnline) return;
+  try {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/${TABLE}?pharmacy=eq.${encodeURIComponent(currentPharmacy)}&location=eq.${encodeURIComponent(location)}&order=timestamp.desc&limit=1`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!resp.ok) return;
+    const rows = await resp.json();
+    if (!rows.length) return;
+    const r = rows[0];
+    const when = new Date(r.timestamp);
+    const dateStr = when.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const timeStr = when.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+    const by = r.scanned_by ? ` by ${r.scanned_by}` : '';
+    document.getElementById('already-scanned-detail').textContent =
+      `Last scanned ${dateStr} at ${timeStr}${by}`;
+    document.getElementById('already-scanned-banner').style.display = 'block';
+  } catch(e) {}
 }
 
 function resetLocScan() {
@@ -824,6 +856,7 @@ function resetLocScan() {
   document.getElementById('loc-zone-value').style.display = 'none';
   document.getElementById('btn-to-scan').style.display    = 'none';
   document.getElementById('btn-rescan-loc').style.display = 'none';
+  document.getElementById('already-scanned-banner').style.display = 'none';
 }
 
 function proceedToScan() {
