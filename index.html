@@ -502,6 +502,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1.3.0/dist/iife/zxing-wasm.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
@@ -516,6 +517,7 @@ let currentPharmacy = '', currentLocation = '', currentUser = '';
 let currentScanType = null;
 let html5QrScanner = null;   // active Html5Qrcode instance
 let scannerTarget = null;    // 'location' | 'barcode'
+let zxingReader = null;      // ZXing instance for inverted-frame fallback
 let sessionScans = [];
 let isOnline = navigator.onLine;
 
@@ -636,7 +638,6 @@ async function startH5QScanner(elementId, target) {
       { facingMode: 'environment' },
       H5Q_CONFIG,
       (decodedText, decodedResult) => {
-        // Capture symbology from result metadata
         let symbology = null;
         try {
           const fmt = decodedResult?.result?.format?.format ?? decodedResult?.format?.format;
@@ -647,39 +648,44 @@ async function startH5QScanner(elementId, target) {
           else onBarcodeScanned(decodedText, symbology);
         });
       },
-      () => {} // ignore per-frame errors
+      () => {}
     );
 
-    // Secondary interval: try decoding an inverted canvas frame to catch
-    // light-on-dark barcodes (like the black-label GS1 QR on the Dupixent box)
-    const videoEl = document.querySelector(`#${elementId} video`);
-    if (videoEl) {
+    // Inverted-frame fallback: catches light-on-dark DataMatrix and QR codes
+    // (e.g. Zepbound white-on-black GS1 DataMatrix labels)
+    // Initialise ZXing lazily then run a parallel decode loop on inverted pixels
+    if (typeof ZXingWASM !== 'undefined' && !zxingReader) {
+      try { zxingReader = await ZXingWASM.getInstance(); } catch(e) {}
+    }
+    if (zxingReader) {
+      const scanEl = document.getElementById(elementId);
       html5QrScanner._invertInterval = setInterval(async () => {
-        if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0) return;
         try {
+          const videoEl = scanEl?.querySelector('video');
+          if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0) return;
           const c = document.createElement('canvas');
           c.width = videoEl.videoWidth; c.height = videoEl.videoHeight;
           const ctx = c.getContext('2d');
           ctx.drawImage(videoEl, 0, 0);
-          // Invert all pixels
           const img = ctx.getImageData(0, 0, c.width, c.height);
+          // Invert RGB channels, leave alpha alone
           for (let i = 0; i < img.data.length; i += 4) {
             img.data[i]   = 255 - img.data[i];
             img.data[i+1] = 255 - img.data[i+1];
             img.data[i+2] = 255 - img.data[i+2];
           }
-          ctx.putImageData(img, 0, 0);
-          // Use html5-qrcode's internal ZXing decoder on the inverted frame
-          if (html5QrScanner && html5QrScanner.scanContext) {
-            const result = await html5QrScanner.scanContext.decodeAsync(c);
-            if (result && result.text) {
-              clearInterval(html5QrScanner._invertInterval);
-              const val = result.text;
-              stopH5QScanner().then(() => {
-                if (target === 'location') onLocationScanned(val);
-                else onBarcodeScanned(val, 'QR Code (inverted)');
-              });
-            }
+          const results = await zxingReader.readBarcodes(img, {
+            tryHarder: true,
+            formats: ['QRCode','DataMatrix','Code128','Code39','EAN13','EAN8','PDF417','Aztec','DataBar','DataBarExpanded']
+          });
+          if (results && results.length > 0) {
+            const val = results[0].text;
+            const fmt = results[0].format || 'Inverted';
+            clearInterval(html5QrScanner._invertInterval);
+            stopH5QScanner().then(() => {
+              if (target === 'location') onLocationScanned(val);
+              else onBarcodeScanned(val, fmt + ' (inverted)');
+            });
           }
         } catch(e) {}
       }, 300);
