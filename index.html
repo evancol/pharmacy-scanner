@@ -518,6 +518,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1.3.0/dist/iife/zxing-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
@@ -533,6 +534,9 @@ let locStream = null, locInterval = null;
 let scanStream = null, scanInterval = null;
 let currentScanType = null;
 let zxingReader = null;
+let zbarScanner = null;
+let nativeBarcodeDetector = null;
+let scanEngine = 'unknown'; // 'native' | 'zxing' | 'zbar'
 let sessionScans = [];
 let isOnline = navigator.onLine;
 
@@ -589,12 +593,43 @@ async function syncPending() {
     showToast(`${pending.length} record${pending.length > 1 ? 's' : ''} synced ✓`, '#0F6E56');
 }
 
-// ─── ZXING ────────────────────────────────────────────────────────────────────
-async function initZxing() {
-  try {
-    if (typeof ZXingWASM !== 'undefined' && !zxingReader)
+// ─── SCANNER ENGINE ───────────────────────────────────────────────────────────
+// Priority: 1) Native BarcodeDetector (iOS 17+ / Chrome Android)
+//           2) ZBar WASM (excellent GS1/DataMatrix support, no WASM size issues on iOS)
+//           3) ZXing WASM (fallback)
+
+const BARCODE_FORMATS_NATIVE = [
+  'qr_code','code_128','code_39','code_93','ean_13','ean_8',
+  'upc_a','upc_e','itf','pdf417','aztec','data_matrix'
+];
+
+async function initScanner() {
+  // Try native BarcodeDetector first (iOS 17+, Chrome 88+)
+  if ('BarcodeDetector' in window) {
+    try {
+      const supported = await BarcodeDetector.getSupportedFormats();
+      nativeBarcodeDetector = new BarcodeDetector({ formats: supported });
+      scanEngine = 'native';
+      return;
+    } catch(e) {}
+  }
+  // Try ZBar WASM — great for GS1/DataMatrix on iOS
+  if (typeof ZBarWasm !== 'undefined') {
+    try {
+      await ZBarWasm.getDefaultScanner();
+      scanEngine = 'zbar';
+      return;
+    } catch(e) {}
+  }
+  // Fallback to ZXing WASM
+  if (typeof ZXingWASM !== 'undefined') {
+    try {
       zxingReader = await ZXingWASM.getInstance();
-  } catch(e) {}
+      scanEngine = 'zxing';
+      return;
+    } catch(e) {}
+  }
+  scanEngine = 'none';
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -656,7 +691,8 @@ async function startLocScan() {
     document.getElementById('loc-video').srcObject = locStream;
     document.getElementById('loc-video-wrapper').classList.add('visible');
     document.getElementById('loc-scanning-label').classList.add('visible');
-    await initZxing();
+    await initScanner();
+    if (scanEngine === 'none') { showToast('No barcode engine available — enter manually', '#BA7517'); stopLocCamera(); document.getElementById('manual-loc-area').classList.add('visible'); return; }
     locInterval = setInterval(() => tryScanFrame(document.getElementById('loc-video'), 'location'), 250);
   } catch(e) {
     showToast('Camera unavailable — enter manually', '#BA7517');
@@ -736,7 +772,8 @@ async function startBarcodeScan(type) {
     document.getElementById('scan-scanning-label').classList.add('visible');
     document.getElementById('btn-cancel-scan').style.display  = 'flex';
     document.getElementById('scan-manual-toggle').style.display = 'block';
-    await initZxing();
+    await initScanner();
+    if (scanEngine === 'none') { showToast('No barcode engine available — enter manually', '#BA7517'); stopScanCamera(); document.getElementById('manual-scan-area').classList.add('visible'); return; }
     scanInterval = setInterval(() => tryScanFrame(document.getElementById('scan-video'), 'barcode'), 250);
   } catch(e) {
     showToast('Camera unavailable — enter manually', '#BA7517');
@@ -775,21 +812,43 @@ function confirmManualScan() {
 }
 
 async function tryScanFrame(video, mode) {
-  if (!zxingReader || video.readyState < 2) return;
+  if (video.readyState < 2 || video.videoWidth === 0) return;
   try {
-    const canvas = document.createElement('canvas');
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-    const results = await zxingReader.readBarcodes(
-      ctx.getImageData(0, 0, canvas.width, canvas.height),
-      { tryHarder: true, formats: ['QRCode','Code128','DataMatrix','EAN13','EAN8','Code39','ITF','PDF417','Aztec','DataBar','DataBarExpanded'] }
-    );
-    if (results && results.length > 0) {
-      const val = results[0].text;
-      if (mode === 'location') { stopLocCamera();  onLocationScanned(val); }
-      else                     { stopScanCamera(); onBarcodeScanned(val);  }
+    let value = null;
+
+    if (scanEngine === 'native' && nativeBarcodeDetector) {
+      // Native BarcodeDetector — works directly on video element
+      const results = await nativeBarcodeDetector.detect(video);
+      if (results && results.length > 0) value = results[0].rawValue;
+
+    } else {
+      // Canvas-based fallback for ZBar / ZXing
+      const canvas = document.createElement('canvas');
+      // Use half resolution for speed on mobile, still plenty for barcodes
+      canvas.width  = Math.min(video.videoWidth,  1280);
+      canvas.height = Math.min(video.videoHeight, 720);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      if (scanEngine === 'zbar') {
+        const scanner = await ZBarWasm.getDefaultScanner();
+        const results = await scanner.scanRGBAWithInfo(
+          ctx.getImageData(0, 0, canvas.width, canvas.height)
+        );
+        if (results && results.length > 0) value = results[0].decode();
+
+      } else if (scanEngine === 'zxing' && zxingReader) {
+        const results = await zxingReader.readBarcodes(
+          ctx.getImageData(0, 0, canvas.width, canvas.height),
+          { tryHarder: true, formats: ['QRCode','Code128','DataMatrix','EAN13','EAN8','Code39','ITF','PDF417','Aztec','DataBar','DataBarExpanded'] }
+        );
+        if (results && results.length > 0) value = results[0].text;
+      }
+    }
+
+    if (value) {
+      if (mode === 'location') { stopLocCamera();  onLocationScanned(value); }
+      else                     { stopScanCamera(); onBarcodeScanned(value);  }
     }
   } catch(e) {}
 }
@@ -910,7 +969,7 @@ try {
 } catch(e) {}
 
 updateConnStatus();
-initZxing();
+initScanner();
 </script>
 </body>
 </html>
