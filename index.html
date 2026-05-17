@@ -347,15 +347,7 @@
     </div>
 
     <div class="video-wrapper" id="loc-video-wrapper">
-      <video id="loc-video" autoplay muted playsinline></video>
-      <div class="scan-crosshair">
-        <svg width="150" height="150" viewBox="0 0 160 160" fill="none">
-          <path d="M20 50V20H50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M140 50V20H110" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M20 110V140H50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M140 110V140H110" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-      </div>
+      <div id="loc-video" style="width:100%;"></div>
     </div>
 
     <div class="manual-toggle" onclick="toggleManualLoc()">Enter location manually instead</div>
@@ -447,15 +439,7 @@
     </div>
 
     <div class="video-wrapper" id="scan-video-wrapper">
-      <video id="scan-video" autoplay muted playsinline></video>
-      <div class="scan-crosshair">
-        <svg width="150" height="150" viewBox="0 0 160 160" fill="none">
-          <path d="M20 50V20H50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M140 50V20H110" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M20 110V140H50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-          <path d="M140 110V140H110" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-      </div>
+      <div id="scan-video" style="width:100%;"></div>
     </div>
 
     <div class="scanning-label" id="scan-scanning-label">
@@ -517,8 +501,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@1.3.0/dist/iife/zxing-wasm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
@@ -530,13 +513,9 @@ const NAME_KEY     = 'pharm_inv_username';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentPharmacy = '', currentLocation = '', currentUser = '';
-let locStream = null, locInterval = null;
-let scanStream = null, scanInterval = null;
 let currentScanType = null;
-let zxingReader = null;
-let zbarScanner = null;
-let nativeBarcodeDetector = null;
-let scanEngine = 'unknown'; // 'native' | 'zxing' | 'zbar'
+let html5QrScanner = null;   // active Html5Qrcode instance
+let scannerTarget = null;    // 'location' | 'barcode'
 let sessionScans = [];
 let isOnline = navigator.onLine;
 
@@ -593,43 +572,64 @@ async function syncPending() {
     showToast(`${pending.length} record${pending.length > 1 ? 's' : ''} synced ✓`, '#0F6E56');
 }
 
-// ─── SCANNER ENGINE ───────────────────────────────────────────────────────────
-// Priority: 1) Native BarcodeDetector (iOS 17+ / Chrome Android)
-//           2) ZBar WASM (excellent GS1/DataMatrix support, no WASM size issues on iOS)
-//           3) ZXing WASM (fallback)
+// ─── SCANNER (html5-qrcode — proven iOS Safari support) ──────────────────────
+const H5Q_CONFIG = {
+  fps: 10,
+  qrbox: { width: 250, height: 250 },
+  aspectRatio: 1.0,
+  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  formatsToSupport: [
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.DATA_MATRIX,
+    Html5QrcodeSupportedFormats.PDF_417,
+    Html5QrcodeSupportedFormats.ITF,
+    Html5QrcodeSupportedFormats.AZTEC,
+  ]
+};
 
-const BARCODE_FORMATS_NATIVE = [
-  'qr_code','code_128','code_39','code_93','ean_13','ean_8',
-  'upc_a','upc_e','itf','pdf417','aztec','data_matrix'
-];
+async function startH5QScanner(elementId, target) {
+  // Stop any existing scanner first
+  await stopH5QScanner();
+  scannerTarget = target;
+  try {
+    html5QrScanner = new Html5Qrcode(elementId, { verbose: false });
+    await html5QrScanner.start(
+      { facingMode: 'environment' },
+      H5Q_CONFIG,
+      (decodedText) => {
+        const val = decodedText;
+        stopH5QScanner().then(() => {
+          if (target === 'location') onLocationScanned(val);
+          else onBarcodeScanned(val);
+        });
+      },
+      () => {} // ignore per-frame errors
+    );
+  } catch(e) {
+    html5QrScanner = null;
+    throw e;
+  }
+}
 
-async function initScanner() {
-  // Try native BarcodeDetector first (iOS 17+, Chrome 88+)
-  if ('BarcodeDetector' in window) {
+async function stopH5QScanner() {
+  if (html5QrScanner) {
     try {
-      const supported = await BarcodeDetector.getSupportedFormats();
-      nativeBarcodeDetector = new BarcodeDetector({ formats: supported });
-      scanEngine = 'native';
-      return;
+      const state = html5QrScanner.getState();
+      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+        await html5QrScanner.stop();
+      }
     } catch(e) {}
+    try { html5QrScanner.clear(); } catch(e) {}
+    html5QrScanner = null;
   }
-  // Try ZBar WASM — great for GS1/DataMatrix on iOS
-  if (typeof ZBarWasm !== 'undefined') {
-    try {
-      await ZBarWasm.getDefaultScanner();
-      scanEngine = 'zbar';
-      return;
-    } catch(e) {}
-  }
-  // Fallback to ZXing WASM
-  if (typeof ZXingWASM !== 'undefined') {
-    try {
-      zxingReader = await ZXingWASM.getInstance();
-      scanEngine = 'zxing';
-      return;
-    } catch(e) {}
-  }
-  scanEngine = 'none';
+  scannerTarget = null;
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -685,24 +685,21 @@ document.getElementById('btn-view-records').addEventListener('click', () => show
 
 // ─── LOCATION SCANNING ────────────────────────────────────────────────────────
 async function startLocScan() {
-  if (locStream) return;
+  if (html5QrScanner) return;
+  document.getElementById('loc-video-wrapper').classList.add('visible');
+  document.getElementById('loc-scanning-label').classList.add('visible');
   try {
-    locStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    document.getElementById('loc-video').srcObject = locStream;
-    document.getElementById('loc-video-wrapper').classList.add('visible');
-    document.getElementById('loc-scanning-label').classList.add('visible');
-    await initScanner();
-    if (scanEngine === 'none') { showToast('No barcode engine available — enter manually', '#BA7517'); stopLocCamera(); document.getElementById('manual-loc-area').classList.add('visible'); return; }
-    locInterval = setInterval(() => tryScanFrame(document.getElementById('loc-video'), 'location'), 250);
+    await startH5QScanner('loc-video', 'location');
   } catch(e) {
+    document.getElementById('loc-video-wrapper').classList.remove('visible');
+    document.getElementById('loc-scanning-label').classList.remove('visible');
     showToast('Camera unavailable — enter manually', '#BA7517');
     document.getElementById('manual-loc-area').classList.add('visible');
   }
 }
 
 function stopLocCamera() {
-  if (locInterval) { clearInterval(locInterval); locInterval = null; }
-  if (locStream)   { locStream.getTracks().forEach(t => t.stop()); locStream = null; }
+  stopH5QScanner();
   document.getElementById('loc-video-wrapper').classList.remove('visible');
   document.getElementById('loc-scanning-label').classList.remove('visible');
 }
@@ -761,30 +758,27 @@ function goBackToLocation() { cancelBarcodeScan(); resetLocScan(); showScreen('l
 
 // ─── BARCODE SCANNING ─────────────────────────────────────────────────────────
 async function startBarcodeScan(type) {
-  if (scanStream) cancelBarcodeScan();
+  if (html5QrScanner) await stopH5QScanner();
   currentScanType = type;
   const labels = { outer: 'outer barcode', inner: 'inner barcode', other: 'other barcode' };
   document.getElementById('scan-scanning-text').textContent = 'Scanning ' + labels[type] + '…';
+  document.getElementById('scan-video-wrapper').classList.add('visible');
+  document.getElementById('scan-scanning-label').classList.add('visible');
+  document.getElementById('btn-cancel-scan').style.display = 'flex';
+  document.getElementById('scan-manual-toggle').style.display = 'block';
   try {
-    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    document.getElementById('scan-video').srcObject = scanStream;
-    document.getElementById('scan-video-wrapper').classList.add('visible');
-    document.getElementById('scan-scanning-label').classList.add('visible');
-    document.getElementById('btn-cancel-scan').style.display  = 'flex';
-    document.getElementById('scan-manual-toggle').style.display = 'block';
-    await initScanner();
-    if (scanEngine === 'none') { showToast('No barcode engine available — enter manually', '#BA7517'); stopScanCamera(); document.getElementById('manual-scan-area').classList.add('visible'); return; }
-    scanInterval = setInterval(() => tryScanFrame(document.getElementById('scan-video'), 'barcode'), 250);
+    await startH5QScanner('scan-video', 'barcode');
   } catch(e) {
+    document.getElementById('scan-video-wrapper').classList.remove('visible');
+    document.getElementById('scan-scanning-label').classList.remove('visible');
+    document.getElementById('btn-cancel-scan').style.display = 'none';
     showToast('Camera unavailable — enter manually', '#BA7517');
-    document.getElementById('scan-manual-toggle').style.display = 'block';
     document.getElementById('manual-scan-area').classList.add('visible');
   }
 }
 
 function stopScanCamera() {
-  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  if (scanStream)   { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  stopH5QScanner();
   document.getElementById('scan-video-wrapper').classList.remove('visible');
   document.getElementById('scan-scanning-label').classList.remove('visible');
   document.getElementById('btn-cancel-scan').style.display = 'none';
@@ -809,48 +803,6 @@ function confirmManualScan() {
   document.getElementById('manual-scan-input').value = '';
   document.getElementById('manual-scan-area').classList.remove('visible');
   onBarcodeScanned(val);
-}
-
-async function tryScanFrame(video, mode) {
-  if (video.readyState < 2 || video.videoWidth === 0) return;
-  try {
-    let value = null;
-
-    if (scanEngine === 'native' && nativeBarcodeDetector) {
-      // Native BarcodeDetector — works directly on video element
-      const results = await nativeBarcodeDetector.detect(video);
-      if (results && results.length > 0) value = results[0].rawValue;
-
-    } else {
-      // Canvas-based fallback for ZBar / ZXing
-      const canvas = document.createElement('canvas');
-      // Use half resolution for speed on mobile, still plenty for barcodes
-      canvas.width  = Math.min(video.videoWidth,  1280);
-      canvas.height = Math.min(video.videoHeight, 720);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      if (scanEngine === 'zbar') {
-        const scanner = await ZBarWasm.getDefaultScanner();
-        const results = await scanner.scanRGBAWithInfo(
-          ctx.getImageData(0, 0, canvas.width, canvas.height)
-        );
-        if (results && results.length > 0) value = results[0].decode();
-
-      } else if (scanEngine === 'zxing' && zxingReader) {
-        const results = await zxingReader.readBarcodes(
-          ctx.getImageData(0, 0, canvas.width, canvas.height),
-          { tryHarder: true, formats: ['QRCode','Code128','DataMatrix','EAN13','EAN8','Code39','ITF','PDF417','Aztec','DataBar','DataBarExpanded'] }
-        );
-        if (results && results.length > 0) value = results[0].text;
-      }
-    }
-
-    if (value) {
-      if (mode === 'location') { stopLocCamera();  onLocationScanned(value); }
-      else                     { stopScanCamera(); onBarcodeScanned(value);  }
-    }
-  } catch(e) {}
 }
 
 // ─── SAVE RECORD ──────────────────────────────────────────────────────────────
@@ -969,7 +921,6 @@ try {
 } catch(e) {}
 
 updateConnStatus();
-initScanner();
 </script>
 </body>
 </html>
