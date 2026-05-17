@@ -354,7 +354,7 @@
     <div class="card">
       <div class="card-label">Or enter location manually</div>
       <div style="display:flex; gap:8px;">
-        <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" style="flex:1;" />
+        <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" style="flex:1; text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
         <button class="btn btn-sm btn-primary" onclick="confirmManualLoc()" style="white-space:nowrap;">Confirm</button>
       </div>
     </div>
@@ -811,6 +811,7 @@ function confirmManualLoc() {
 }
 
 async function onLocationScanned(val) {
+  val = val.trim().toUpperCase();
   stopLocCamera();
   currentLocation = val;
   document.getElementById('loc-zone').classList.add('success');
