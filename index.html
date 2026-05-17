@@ -574,8 +574,13 @@ async function syncPending() {
 
 // ─── SCANNER (html5-qrcode — proven iOS Safari support) ──────────────────────
 const H5Q_CONFIG = {
-  fps: 10,
-  qrbox: { width: 250, height: 250 },
+  fps: 15,
+  qrbox: (viewfinderWidth, viewfinderHeight) => {
+    // Use 80% of the smaller dimension — gives more scanning area for DataMatrix
+    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+    const size = Math.floor(minEdge * 0.8);
+    return { width: size, height: size };
+  },
   aspectRatio: 1.0,
   supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
   experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -583,19 +588,42 @@ const H5Q_CONFIG = {
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.CODE_128,
     Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.CODE_93,
     Html5QrcodeSupportedFormats.EAN_13,
     Html5QrcodeSupportedFormats.EAN_8,
     Html5QrcodeSupportedFormats.UPC_A,
     Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
+    Html5QrcodeSupportedFormats.DATA_MATRIX,  // covers GS1 DataMatrix
     Html5QrcodeSupportedFormats.PDF_417,
     Html5QrcodeSupportedFormats.ITF,
     Html5QrcodeSupportedFormats.AZTEC,
+    Html5QrcodeSupportedFormats.RSS_14,        // GS1 DataBar
+    Html5QrcodeSupportedFormats.RSS_EXPANDED,  // GS1 DataBar Expanded
   ]
 };
 
+// Map html5-qrcode format enum values to human-readable symbology names
+const FORMAT_NAMES = {
+  0:  'QR Code',
+  1:  'Aztec',
+  2:  'Codabar',
+  3:  'Code 39',
+  4:  'Code 93',
+  5:  'Code 128',
+  6:  'Data Matrix',
+  7:  'EAN-8',
+  8:  'EAN-13',
+  9:  'ITF',
+  10: 'MaxiCode',
+  11: 'PDF417',
+  12: 'RSS-14 (GS1 DataBar)',
+  13: 'RSS Expanded (GS1 DataBar Expanded)',
+  14: 'UPC-A',
+  15: 'UPC-E',
+  16: 'UPC/EAN Extension',
+};
+
 async function startH5QScanner(elementId, target) {
-  // Stop any existing scanner first
   await stopH5QScanner();
   scannerTarget = target;
   try {
@@ -603,11 +631,16 @@ async function startH5QScanner(elementId, target) {
     await html5QrScanner.start(
       { facingMode: 'environment' },
       H5Q_CONFIG,
-      (decodedText) => {
-        const val = decodedText;
+      (decodedText, decodedResult) => {
+        // Capture symbology from result metadata
+        let symbology = null;
+        try {
+          const fmt = decodedResult?.result?.format?.format ?? decodedResult?.format?.format;
+          symbology = FORMAT_NAMES[fmt] ?? ('Format ' + fmt);
+        } catch(e) {}
         stopH5QScanner().then(() => {
-          if (target === 'location') onLocationScanned(val);
-          else onBarcodeScanned(val);
+          if (target === 'location') onLocationScanned(decodedText);
+          else onBarcodeScanned(decodedText, symbology);
         });
       },
       () => {} // ignore per-frame errors
@@ -707,7 +740,10 @@ function stopLocCamera() {
 function toggleManualLoc() {
   const a = document.getElementById('manual-loc-area');
   a.classList.toggle('visible');
-  if (a.classList.contains('visible')) document.getElementById('manual-loc-input').focus();
+  if (a.classList.contains('visible')) {
+    document.getElementById('manual-loc-input').value = '';
+    document.getElementById('manual-loc-input').focus();
+  }
 }
 
 function confirmManualLoc() {
@@ -802,11 +838,11 @@ function confirmManualScan() {
   if (!val) { showToast('Please enter a barcode value', '#BA7517'); return; }
   document.getElementById('manual-scan-input').value = '';
   document.getElementById('manual-scan-area').classList.remove('visible');
-  onBarcodeScanned(val);
+  onBarcodeScanned(val, 'Manual entry');
 }
 
 // ─── SAVE RECORD ──────────────────────────────────────────────────────────────
-async function onBarcodeScanned(value) {
+async function onBarcodeScanned(value, symbology) {
   const record = {
     pharmacy:      currentPharmacy,
     location:      currentLocation,
@@ -815,6 +851,7 @@ async function onBarcodeScanned(value) {
     ndc:           document.getElementById('field-ndc').value.trim()  || null,
     barcode_type:  currentScanType,
     barcode_value: value,
+    symbology:     symbology || null,
     timestamp:     new Date().toISOString(),
     scanned_at:    new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
   };
@@ -893,9 +930,9 @@ function exportCSV() {
   if (!records.length) { showToast('No records to export', '#BA7517'); return; }
   const fp      = document.getElementById('filter-pharmacy')?.value || '';
   const filtered = fp ? records.filter(r => r.pharmacy === fp) : records;
-  const csv = 'Pharmacy,Location,ScannedBy,E#,NDC,BarcodeType,BarcodeValue,Timestamp\n' +
+  const csv = 'Pharmacy,Location,ScannedBy,E#,NDC,BarcodeType,BarcodeValue,Symbology,Timestamp\n' +
     filtered.map(r =>
-      [r.pharmacy, r.location, r.scanned_by||'', r.enum||'', r.ndc||'', r.barcode_type, r.barcode_value, r.timestamp]
+      [r.pharmacy, r.location, r.scanned_by||'', r.enum||'', r.ndc||'', r.barcode_type, r.barcode_value, r.symbology||'', r.timestamp]
         .map(v => `"${String(v||'').replace(/"/g,'""')}"`)
         .join(',')
     ).join('\n');
