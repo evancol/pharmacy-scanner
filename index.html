@@ -350,7 +350,7 @@
       <div id="loc-video" style="width:100%;"></div>
     </div>
 
-    <div class="manual-toggle" onclick="toggleManualLoc()">Enter location manually instead</div>
+    <div class="manual-toggle" style="font-size:14px;" onclick="toggleManualLoc()">Enter location manually instead</div>
     <div class="manual-area" id="manual-loc-area">
       <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" />
       <button class="btn btn-sm btn-primary" onclick="confirmManualLoc()">Confirm location</button>
@@ -376,15 +376,6 @@
         <span id="scan-location-text"></span>
       </div>
     </div>
-
-    <button class="btn-next-location" id="btn-next-location" onclick="goBackToLocation()">
-      <i class="ti ti-map-pin nl-icon" aria-hidden="true"></i>
-      <span class="nl-text">
-        <span class="nl-title">Scan next location</span>
-        <span class="nl-sub" id="nl-sub">Done with this location?</span>
-      </span>
-      <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:18px;"></i>
-    </button>
 
     <div class="card">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -463,6 +454,15 @@
       <div class="card-label" style="margin-bottom:8px;">Scans at this location</div>
       <div id="recent-list"></div>
     </div>
+
+    <button class="btn-next-location" id="btn-next-location" onclick="goBackToLocation()">
+      <i class="ti ti-map-pin nl-icon" aria-hidden="true"></i>
+      <span class="nl-text">
+        <span class="nl-title">Scan next location</span>
+        <span class="nl-sub" id="nl-sub">Done with this location?</span>
+      </span>
+      <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:18px;"></i>
+    </button>
   </div>
 
   <!-- SCREEN 4: Records -->
@@ -574,7 +574,7 @@ async function syncPending() {
 
 // ─── SCANNER (html5-qrcode — proven iOS Safari support) ──────────────────────
 const H5Q_CONFIG = {
-  fps: 15,
+  fps: 20,
   qrbox: (viewfinderWidth, viewfinderHeight) => {
     // Use 80% of the smaller dimension — gives more scanning area for DataMatrix
     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
@@ -583,7 +583,11 @@ const H5Q_CONFIG = {
   },
   aspectRatio: 1.0,
   supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  experimentalFeatures: {
+    useBarCodeDetectorIfSupported: true,
+    // Attempt to scan inverted barcodes (light on dark, like the black-label QR)
+    useZxingLibraryForScan: true,
+  },
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.CODE_128,
@@ -645,6 +649,41 @@ async function startH5QScanner(elementId, target) {
       },
       () => {} // ignore per-frame errors
     );
+
+    // Secondary interval: try decoding an inverted canvas frame to catch
+    // light-on-dark barcodes (like the black-label GS1 QR on the Dupixent box)
+    const videoEl = document.querySelector(`#${elementId} video`);
+    if (videoEl) {
+      html5QrScanner._invertInterval = setInterval(async () => {
+        if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0) return;
+        try {
+          const c = document.createElement('canvas');
+          c.width = videoEl.videoWidth; c.height = videoEl.videoHeight;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(videoEl, 0, 0);
+          // Invert all pixels
+          const img = ctx.getImageData(0, 0, c.width, c.height);
+          for (let i = 0; i < img.data.length; i += 4) {
+            img.data[i]   = 255 - img.data[i];
+            img.data[i+1] = 255 - img.data[i+1];
+            img.data[i+2] = 255 - img.data[i+2];
+          }
+          ctx.putImageData(img, 0, 0);
+          // Use html5-qrcode's internal ZXing decoder on the inverted frame
+          if (html5QrScanner && html5QrScanner.scanContext) {
+            const result = await html5QrScanner.scanContext.decodeAsync(c);
+            if (result && result.text) {
+              clearInterval(html5QrScanner._invertInterval);
+              const val = result.text;
+              stopH5QScanner().then(() => {
+                if (target === 'location') onLocationScanned(val);
+                else onBarcodeScanned(val, 'QR Code (inverted)');
+              });
+            }
+          }
+        } catch(e) {}
+      }, 300);
+    }
   } catch(e) {
     html5QrScanner = null;
     throw e;
@@ -653,6 +692,12 @@ async function startH5QScanner(elementId, target) {
 
 async function stopH5QScanner() {
   if (html5QrScanner) {
+    try {
+      if (html5QrScanner._invertInterval) {
+        clearInterval(html5QrScanner._invertInterval);
+        html5QrScanner._invertInterval = null;
+      }
+    } catch(e) {}
     try {
       const state = html5QrScanner.getState();
       if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
