@@ -350,18 +350,19 @@
       <div id="loc-video" style="width:100%;"></div>
     </div>
 
-    <div class="manual-toggle" style="font-size:14px;" onclick="toggleManualLoc()">Enter location manually instead</div>
-    <div class="manual-area" id="manual-loc-area">
-      <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" />
-      <button class="btn btn-sm btn-primary" onclick="confirmManualLoc()">Confirm location</button>
+    <!-- Manual entry always visible -->
+    <div class="card">
+      <div class="card-label">Or enter location manually</div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" style="flex:1;" />
+        <button class="btn btn-sm btn-primary" onclick="confirmManualLoc()" style="white-space:nowrap;">Confirm</button>
+      </div>
     </div>
 
-    <button class="btn btn-primary" id="btn-to-scan" style="display:none;" onclick="proceedToScan()">
-      <i class="ti ti-arrow-right" aria-hidden="true"></i> Continue to scanning
-    </button>
-    <button class="btn" id="btn-rescan-loc" style="display:none;" onclick="resetLocScan()">
-      <i class="ti ti-refresh" aria-hidden="true"></i> Rescan location
-    </button>
+    <!-- Prior scan check — checking state, then result -->
+    <div id="prior-scan-checking" style="display:none; align-items:center; gap:8px; font-size:13px; color:#888; padding: 0 0.25rem;">
+      <div class="pulse"></div> Checking for prior scans…
+    </div>
 
     <!-- Already scanned warning -->
     <div id="already-scanned-banner" style="display:none; background:#FAEEDA; border:0.5px solid #EF9F27; border-radius:var(--radius-lg); padding:0.875rem 1rem;">
@@ -371,6 +372,13 @@
       </div>
       <div id="already-scanned-detail" style="font-size:12px; color:#633806; padding-left:24px;"></div>
     </div>
+
+    <button class="btn btn-primary" id="btn-to-scan" style="display:none;" onclick="proceedToScan()">
+      <i class="ti ti-arrow-right" aria-hidden="true"></i> Continue to scanning
+    </button>
+    <button class="btn" id="btn-rescan-loc" style="display:none;" onclick="resetLocScan()">
+      <i class="ti ti-refresh" aria-hidden="true"></i> Rescan location
+    </button>
   </div>
 
   <!-- SCREEN 3: Scanning -->
@@ -796,15 +804,6 @@ function stopLocCamera() {
   document.getElementById('loc-scanning-label').classList.remove('visible');
 }
 
-function toggleManualLoc() {
-  const a = document.getElementById('manual-loc-area');
-  a.classList.toggle('visible');
-  if (a.classList.contains('visible')) {
-    document.getElementById('manual-loc-input').value = '';
-    document.getElementById('manual-loc-input').focus();
-  }
-}
-
 function confirmManualLoc() {
   const val = document.getElementById('manual-loc-input').value.trim();
   if (!val) { showToast('Please enter a location', '#BA7517'); return; }
@@ -828,12 +827,17 @@ async function onLocationScanned(val) {
 }
 
 async function checkPriorScans(location) {
-  if (!isOnline) return;
+  const checking = document.getElementById('prior-scan-checking');
+  const banner   = document.getElementById('already-scanned-banner');
+  banner.style.display   = 'none';
+  checking.style.display = 'flex';
+  if (!isOnline) { checking.style.display = 'none'; return; }
   try {
     const resp = await fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}?pharmacy=eq.${encodeURIComponent(currentPharmacy)}&location=eq.${encodeURIComponent(location)}&order=timestamp.desc&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
+    checking.style.display = 'none';
     if (!resp.ok) return;
     const rows = await resp.json();
     if (!rows.length) return;
@@ -844,8 +848,8 @@ async function checkPriorScans(location) {
     const by = r.scanned_by ? ` by ${r.scanned_by}` : '';
     document.getElementById('already-scanned-detail').textContent =
       `Last scanned ${dateStr} at ${timeStr}${by}`;
-    document.getElementById('already-scanned-banner').style.display = 'block';
-  } catch(e) {}
+    banner.style.display = 'block';
+  } catch(e) { checking.style.display = 'none'; }
 }
 
 function resetLocScan() {
@@ -857,6 +861,8 @@ function resetLocScan() {
   document.getElementById('btn-to-scan').style.display    = 'none';
   document.getElementById('btn-rescan-loc').style.display = 'none';
   document.getElementById('already-scanned-banner').style.display = 'none';
+  document.getElementById('prior-scan-checking').style.display    = 'none';
+  document.getElementById('manual-loc-input').value = '';
 }
 
 function proceedToScan() {
