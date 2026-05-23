@@ -599,7 +599,11 @@ const H5Q_CONFIG = {
   },
   aspectRatio: 1.0,
   supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  experimentalFeatures: {
+    // NOTE: BarcodeDetector is disabled intentionally — it does not support
+    // GS1 DataBar (RSS_14/RSS_EXPANDED). ZXing-js handles all formats correctly.
+    useBarCodeDetectorIfSupported: false,
+  },
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.CODE_128,
