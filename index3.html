@@ -284,7 +284,24 @@
     display: none;
   }
   #ndc-format-warn.visible { display: block; color: var(--amber); }
-  #ndc-required-warn.visible { display: block; color: var(--red); }
+  #ndc-required-warn {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f85149;
+    color: var(--red);
+    font-family: var(--mono);
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: #3a1010;
+    background: var(--red-dim);
+    border: 2px solid #f85149;
+    border-color: var(--red);
+    border-radius: 8px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  #ndc-required-warn.visible { display: flex; }
 
   /* ── Characteristics ── */
   #char-card { display: none; }
