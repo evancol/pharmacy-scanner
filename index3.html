@@ -458,9 +458,13 @@
 <header>
   <div class="logo">Rx<span> // </span>HC50 <span id="conn-pill" class="pill pill-green" style="margin-left:6px">● ON</span></div>
   <div class="header-right">
+    <span id="user-badge" style="display:none;font-family:var(--mono);font-size:11px;color:var(--text-muted)"><strong id="user-badge-name"></strong></span>
     <button id="theme-toggle-btn" onclick="toggleTheme()">☀</button>
     <button id="change-user-btn" style="display:none" onclick="goSetup()">👤</button>
   </div>
+  <!-- stubs for JS compatibility -->
+  <span id="toggle-help-btn" style="display:none"></span>
+  <span id="instructions-panel" style="display:none"></span>
 </header>
 
 <!-- SYNC BANNER -->
@@ -493,6 +497,10 @@
 
   <!-- SCAN SCREEN -->
   <div id="screen-scan" class="screen">
+
+    <!-- Hidden stubs for JS compatibility -->
+    <input type="hidden" id="input-enum" value="" />
+    <tbody id="records-tbody" style="display:none"></tbody>
 
     <!-- NDC -->
     <div class="card">
