@@ -569,6 +569,8 @@
             <th onclick="sortBy('ndc')">NDC-11</th>
             <th onclick="sortBy('barcode_type')">Type</th>
             <th onclick="sortBy('barcode_value')">Barcode</th>
+            <th onclick="sortBy('gtin')">GTIN</th>
+            <th onclick="sortBy('symbology')">Symbology</th>
             <th onclick="sortBy('enum')">E#</th>
             <th onclick="sortBy('scanned_by')">Scanned By</th>
           </tr>
@@ -829,6 +831,132 @@ function unlockBarcode() {
   bi.placeholder = 'Scan or type barcode, then press Enter…';
 }
 
+// ── GS1 / barcode parsing ──
+
+// AIM ID prefix → human-readable symbology name
+const AIM_SYMBOLOGY = {
+  ']C1': 'GS1-128',
+  ']e0': 'GS1 DataMatrix',
+  ']e1': 'GS1 DataMatrix',
+  ']e2': 'GS1 DataMatrix',
+  ']d1': 'GS1 DataBar',
+  ']d2': 'GS1 DataBar',
+  ']d3': 'GS1 DataBar',
+  ']E0': 'EAN-13',
+  ']E3': 'EAN-8',
+  ']E4': 'EAN-13 (addon)',
+  ']A0': 'UPC-A',
+  ']A1': 'UPC-A',
+  ']A2': 'UPC-A',
+  ']A3': 'UPC-E',
+  ']A4': 'UPC-E',
+  ']A5': 'UPC-A (addon)',
+  ']Q1': 'QR Code',
+  ']Q3': 'QR Code',
+  ']I1': 'ITF-14',
+  ']F1': 'Codabar',
+  ']G0': 'Code 128',
+  ']G1': 'Code 128',
+};
+
+// GS1 check digit validation (Luhn mod-10 variant used by all GTIN lengths)
+function gs1CheckDigit(digits) {
+  // digits = string of all digits including check digit as last char
+  const d = digits.split('').map(Number);
+  const check = d.pop();
+  let sum = 0;
+  d.reverse().forEach((v, i) => { sum += i % 2 === 0 ? v * 3 : v; });
+  return (10 - (sum % 10)) % 10 === check;
+}
+
+// Normalize any GTIN variant to 14 digits by zero-padding
+function toGTIN14(digits) {
+  if ([8, 12, 13, 14].includes(digits.length)) {
+    return digits.padStart(14, '0');
+  }
+  return null;
+}
+
+// Extract GTIN from GS1-128 / GS1 DataMatrix content
+// AI (01) = GTIN, always 14 digits following the AI
+function extractGS1GTIN(raw) {
+  // GS1 composite: may start with FNC1 (transmitted as ] or similar, already stripped by AIM)
+  // Look for AI 01 anywhere in the string
+  const m = raw.match(/(?:^|\x1D)01(\d{14})/);
+  if (m) return m[1];
+  // Also handle plain 01 at start (common when FNC1 already stripped)
+  const m2 = raw.match(/^01(\d{14})/);
+  if (m2) return m2[1];
+  return null;
+}
+
+function parseBarcode(raw) {
+  let aimId       = null;
+  let symbology   = 'Connected reader';
+  let cleanValue  = raw;
+  let gtin        = null;
+  let gtinValid   = null;
+  let upcValid    = null;
+
+  // ── 1. Detect and strip AIM ID (format: ]XX where X can be alphanumeric) ──
+  const aimMatch = raw.match(/^(\][A-Za-z]\d)/);
+  if (aimMatch) {
+    aimId      = aimMatch[1];
+    cleanValue = raw.slice(3);
+    symbology  = AIM_SYMBOLOGY[aimId] || ('AIM:' + aimId);
+  }
+
+  const digits = cleanValue.replace(/\D/g, '');
+
+  // ── 2. GS1-128 or GS1 DataMatrix: extract GTIN from AI (01) ──
+  if (aimId === ']C1' || aimId === ']e0' || aimId === ']e1' || aimId === ']e2') {
+    const extracted = extractGS1GTIN(cleanValue);
+    if (extracted) {
+      gtin      = extracted;
+      gtinValid = gs1CheckDigit(extracted);
+    }
+  }
+
+  // ── 3. Plain numeric barcodes: GTIN-8/12/13/14 ──
+  if (!gtin && /^\d+$/.test(cleanValue)) {
+    const len = cleanValue.length;
+    if ([8, 12, 13, 14].includes(len)) {
+      gtin      = toGTIN14(cleanValue);
+      gtinValid = gs1CheckDigit(cleanValue); // validate on original length
+      if (len === 12 && gtinValid) {
+        upcValid = true;  // valid 12-digit UPC-A
+      }
+    }
+  }
+
+  // ── 4. UPC-A from AIM (scanner confirms symbology) ──
+  if (aimId && aimId.startsWith(']A') && cleanValue.length === 12 && /^\d{12}$/.test(cleanValue)) {
+    gtin     = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+    upcValid  = gtinValid;
+  }
+
+  // ── 5. EAN-13 from AIM ──
+  if ((aimId === ']E0' || aimId === ']E4') && cleanValue.length === 13 && /^\d{13}$/.test(cleanValue)) {
+    gtin      = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  // ── 6. EAN-8 from AIM ──
+  if (aimId === ']E3' && cleanValue.length === 8 && /^\d{8}$/.test(cleanValue)) {
+    gtin      = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  // ── 7. ITF-14 ──
+  if (aimId === ']I1' && cleanValue.length === 14 && /^\d{14}$/.test(cleanValue)) {
+    gtin      = cleanValue;
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  return { aimId, symbology, cleanValue, gtin, gtinValid, upcValid };
+}
+
 // ── Barcode input ──
 function onBarcodeKey(e) {
   if (e.key === 'Enter') saveScan();
@@ -852,8 +980,10 @@ async function saveScan() {
     showFeedback('Select Outer, Inner, or Other first.', false);
     return;
   }
-  const barcodeVal = document.getElementById('input-barcode').value.trim();
-  if (!barcodeVal) return;
+  const rawInput = document.getElementById('input-barcode').value.trim();
+  if (!rawInput) return;
+
+  const parsed = parseBarcode(rawInput);
 
   const now = new Date();
   const record = {
@@ -863,8 +993,12 @@ async function saveScan() {
     enum:          document.getElementById('input-enum').value.trim() || null,
     ndc:           ndcConfirmed,
     barcode_type:  selectedBarcodeType,
-    barcode_value: barcodeVal,
-    symbology:     'Connected reader',
+    barcode_value: parsed.cleanValue,
+    symbology:     parsed.symbology,
+    aim_id:        parsed.aimId,
+    gtin:          parsed.gtin,
+    gtin_valid:    parsed.gtinValid,
+    upc_valid:     parsed.upcValid,
     scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     timestamp:     now.toISOString()
   };
@@ -885,7 +1019,10 @@ async function saveScan() {
         console.error('Supabase POST error', res.status, errText);
         throw new Error('HTTP ' + res.status + ' — ' + errText);
       }
-      showFeedback(`✓ Saved — ${ndcConfirmed} / ${selectedBarcodeType} / ${barcodeVal}`, true);
+      const gtinInfo = parsed.gtin
+        ? ` · GTIN ${parsed.gtin}${parsed.upcValid ? ' (UPC-A ✓)' : parsed.gtinValid ? ' (valid)' : ' (check digit FAIL)'}`
+        : '';
+      showFeedback(`✓ Saved — ${parsed.symbology} / ${parsed.cleanValue}${gtinInfo}`, true);
     } catch (err) {
       console.error('Save failed:', err);
       enqueuePending(record);
@@ -993,7 +1130,7 @@ function updateMiniList() {
 // ── Records ──
 async function loadRecords() {
   document.getElementById('records-tbody').innerHTML =
-    '<tr class="empty-row"><td colspan="6">Loading…</td></tr>';
+    '<tr class="empty-row"><td colspan="8">Loading…</td></tr>';
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/scans?order=created_at.desc&limit=2000`,
@@ -1029,7 +1166,7 @@ function renderRecordsTable() {
   });
   const tbody = document.getElementById('records-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No records found.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No records found.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -1038,11 +1175,19 @@ function renderRecordsTable() {
       ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
         dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : (r.scanned_at || '');
+    let gtinCell = r.gtin || '';
+    if (gtinCell) {
+      if (r.upc_valid)   gtinCell += ' <span style="color:var(--green);font-size:10px">UPC✓</span>';
+      else if (r.gtin_valid)  gtinCell += ' <span style="color:var(--green);font-size:10px">✓</span>';
+      else if (r.gtin_valid === false) gtinCell += ' <span style="color:var(--red);font-size:10px">✗</span>';
+    }
     return `<tr>
       <td>${timeStr}</td>
       <td class="ndc-val">${r.ndc || ''}</td>
       <td>${r.barcode_type || ''}</td>
       <td class="mono-val">${r.barcode_value || ''}</td>
+      <td class="mono-val">${gtinCell}</td>
+      <td style="color:var(--text-dim)">${r.symbology || ''}</td>
       <td>${r.enum || ''}</td>
       <td>${r.scanned_by || ''}</td>
     </tr>`;
@@ -1058,7 +1203,7 @@ function exportCSV() {
     (r.enum||'').toLowerCase().includes(f) ||
     (r.scanned_by||'').toLowerCase().includes(f)
   );
-  const cols = ['timestamp','ndc','barcode_type','barcode_value','enum','scanned_by','symbology'];
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','enum','scanned_by'];
   const csv = [cols.join(','), ...rows.map(r =>
     cols.map(c => JSON.stringify(r[c] || '')).join(',')
   )].join('\n');
