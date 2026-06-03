@@ -30,6 +30,42 @@
     --sans: 'IBM Plex Sans', sans-serif;
   }
 
+  /* ── Light mode overrides ── */
+  body.light-mode {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --surface2: #eaeef2;
+    --border: #d0d7de;
+    --border-light: #e4e9ef;
+    --text: #1f2328;
+    --text-muted: #656d76;
+    --text-dim: #adb5bd;
+    --green: #1a7f37;
+    --green-dim: #dafbe1;
+    --green-glow: rgba(26,127,55,0.12);
+    --amber: #9a6700;
+    --amber-dim: #fff8c5;
+    --amber-glow: rgba(154,103,0,0.12);
+    --blue: #0969da;
+    --blue-dim: #ddf4ff;
+    --red: #d1242f;
+    --red-dim: #ffebe9;
+  }
+
+  /* Theme toggle button */
+  #theme-toggle-btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #theme-toggle-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -608,6 +644,7 @@
     <span id="conn-pill" class="pill pill-green">✅ online</span>
   </div>
   <div class="header-right">
+    <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light/dark mode">☀ Light</button>
     <div class="user-badge" id="user-badge" style="display:none">
       Scanning as <strong id="user-badge-name"></strong>
     </div>
@@ -998,6 +1035,13 @@ let uomState = {
   source: null
 };
 
+// ── Theme toggle ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('rxscanner_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+}
+
 // ── Instructions toggle ──
 function toggleInstructions() {
   const panel = document.getElementById('instructions-panel');
@@ -1011,6 +1055,12 @@ function toggleInstructions() {
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('rxscanner_name');
   if (saved) document.getElementById('input-name').value = saved;
+  // Restore theme preference
+  if (localStorage.getItem('rxscanner_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    const tb = document.getElementById('theme-toggle-btn');
+    if (tb) tb.textContent = '🌙 Dark';
+  }
   // Restore instructions preference
   if (localStorage.getItem('rxscanner_hide_instructions') === '1') {
     document.getElementById('instructions-panel').classList.add('hidden');
