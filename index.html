@@ -733,22 +733,36 @@ async function confirmNDC(rawValue) {
   msg.textContent  = 'Checking for prior scans of this NDC…';
 
   try {
-    // Query by exact NDC value; also try without dashes in case stored either way
+    // Fetch all records for this NDC so we can show barcode types already logged
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/scans?ndc=eq.${encodeURIComponent(rawValue)}&order=created_at.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/scans?ndc=eq.${encodeURIComponent(rawValue)}&order=created_at.desc`,
       { headers: sbHeaders() }
     );
     const data = await res.json();
 
     if (data && data.length > 0) {
-      const s = data[0];
-      const dt = new Date(s.timestamp || s.created_at);
+      const latest = data[0];
+      const dt = new Date(latest.timestamp || latest.created_at);
       const when = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
         ' at ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+      // Collect unique barcode types that have been scanned
+      const typeCounts = {};
+      data.forEach(r => {
+        if (r.barcode_type) {
+          typeCounts[r.barcode_type] = (typeCounts[r.barcode_type] || 0) + 1;
+        }
+      });
+      const typeLabels = { outer: 'Outer', inner: 'Inner', other: 'Other' };
+      const typePills = Object.entries(typeCounts)
+        .map(([t, n]) => `<span style="display:inline-block;padding:1px 7px;border-radius:10px;border:1px solid var(--amber);font-size:10px;margin:0 3px 0 0">${typeLabels[t] || t}×${n}</span>`)
+        .join('');
+
       box.className    = 'found';
       icon.className   = '';
       icon.textContent = '⚠';
-      msg.innerHTML    = `<strong>Already scanned</strong> — last recorded ${when} by <strong>${s.scanned_by || 'unknown'}</strong>`;
+      msg.innerHTML    = `<strong>Already scanned</strong> — last recorded ${when} by <strong>${latest.scanned_by || 'unknown'}</strong>`
+        + `<div style="margin-top:6px;font-size:11px;opacity:0.85">Barcodes logged: ${typePills || 'none recorded'}</div>`;
     } else {
       box.className    = 'clear';
       icon.className   = '';
