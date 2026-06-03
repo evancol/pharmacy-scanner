@@ -850,7 +850,7 @@
             <div>NDC: <span class="val" id="stat-ndc">—</span></div>
             <div>Last scan: <span class="val" id="stat-last">—</span></div>
           </div>
-          <button class="btn btn-amber btn-sm btn-full" id="next-item-btn" onclick="nextItem()">
+          <button class="btn btn-amber btn-full" id="next-item-btn" onclick="nextItem()" style="font-size:15px;padding:14px 20px;margin-top:8px">
             → Next Item
           </button>
         </div>
@@ -1550,11 +1550,9 @@ async function saveScan() {
   document.getElementById('stat-last').textContent = record.scanned_at;
   document.getElementById('next-item-btn').classList.add('visible');
 
-  // Reset for next barcode at this item
+  // Reset for next barcode — keep type selected, just clear the value and refocus
   document.getElementById('input-barcode').value = '';
-  selectedBarcodeType = '';
-  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('input-barcode').disabled = true;
+  document.getElementById('input-barcode').focus();
 
   // Show GTIN if recognised
   showGtinDisplay(parsed);
