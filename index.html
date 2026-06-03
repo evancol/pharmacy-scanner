@@ -1,1012 +1,1054 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Pharmacy Inventory Scan</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharmacy Inventory Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --green-dark: #085041;
-    --green-mid: #0F6E56;
-    --green-light: #1D9E75;
-    --green-bg: #E1F5EE;
-    --amber: #BA7517;
-    --amber-bg: #FAEEDA;
-    --danger: #A32D2D;
-    --danger-bg: #FCEBEB;
-    --blue-bg: #E6F1FB;
-    --blue-text: #0C447C;
-    --purple-bg: #EEEDFE;
-    --purple-text: #3C3489;
-    --gray-bg: #F1EFE8;
-    --gray-text: #444441;
-    --border: rgba(0,0,0,0.12);
-    --border-strong: rgba(0,0,0,0.22);
-    --radius: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --border: #30363d;
+    --border-light: #21262d;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim: #484f58;
+    --green: #3fb950;
+    --green-dim: #1a3a20;
+    --green-glow: rgba(63,185,80,0.15);
+    --amber: #d29922;
+    --amber-dim: #3a2a00;
+    --amber-glow: rgba(210,153,34,0.15);
+    --blue: #58a6ff;
+    --blue-dim: #0d2340;
+    --red: #f85149;
+    --red-dim: #3a1010;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
   }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f5f5f3;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
     min-height: 100vh;
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 0;
+    flex-direction: column;
   }
 
-  #app {
-    width: 100%;
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--text-muted); }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .pill-green { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .pill-red   { border-color: var(--red);   color: var(--red);   background: var(--red-dim);   }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-badge { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .user-badge strong { color: var(--text); }
+
+  /* ── Nav tabs ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+  }
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* ── Sync banner ── */
+  #sync-banner {
+    background: var(--amber-dim);
+    border-bottom: 1px solid var(--amber);
+    padding: 10px 24px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+  }
+  #sync-banner.visible { display: flex; }
+  .sync-msg { font-size: 13px; color: var(--amber); flex: 1; }
+  .sync-msg strong { font-family: var(--mono); }
+
+  /* ── Main ── */
+  main { flex: 1; padding: 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Setup ── */
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 48px;
     max-width: 480px;
-    min-height: 100vh;
-    background: #fff;
-    position: relative;
+    margin: 48px auto;
   }
-
-  .screen { display: none; flex-direction: column; padding: 1rem; gap: 0.75rem; min-height: 100vh; }
-  .screen.active { display: flex; }
-
-  .header {
-    display: flex; align-items: center; gap: 8px;
-    padding-bottom: 0.75rem;
-    border-bottom: 0.5px solid var(--border);
-    position: sticky; top: 0; background: #fff; z-index: 10;
-    margin: -1rem -1rem 0; padding: 1rem 1rem 0.75rem;
+  .setup-title {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--green);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
   }
-  .header h1 { font-size: 15px; font-weight: 600; color: #111; flex: 1; }
-  .header-icon { font-size: 20px; color: #888; }
-  .back-btn { background: none; border: none; cursor: pointer; padding: 0; color: #888; font-size: 20px; line-height: 1; }
+  .setup-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
 
-  .location-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--green-bg); border-radius: 100px;
-    padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--green-dark);
-    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* ── Forms ── */
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
   }
+  label .required { color: var(--red); margin-left: 3px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="text"]:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+  }
+  input[type="text"].invalid {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(248,81,73,0.15);
+  }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+  .field { margin-bottom: 20px; }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #0d1117; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-muted); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .btn-amber:hover { filter: brightness(1.2); }
+  .btn-sm { padding: 6px 12px; font-size: 11px; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ── Scan layout ── */
+  .scan-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
   .card {
-    background: #fff; border: 0.5px solid var(--border);
-    border-radius: var(--radius-lg); padding: 0.875rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
   }
-  .card-label {
-    font-size: 11px; font-weight: 600; color: #888;
-    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  input[type="text"], input[type="search"], select, textarea {
-    width: 100%; padding: 0 12px; height: 38px;
-    border: 0.5px solid var(--border-strong); border-radius: var(--radius);
-    font-size: 15px; color: #111; background: #fff;
-    outline: none; transition: border-color 0.15s;
-    font-family: inherit;
+  /* NDC duplicate check box */
+  #ndc-check-box {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
   }
-  input:focus, select:focus { border-color: var(--green-light); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+  #ndc-check-box.checking {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  #ndc-check-box.found {
+    display: flex;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+  }
+  #ndc-check-box.clear {
+    display: flex;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--green);
+  }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
-  .field-row { display: flex; gap: 8px; align-items: center; }
-  .field-row input { flex: 1; }
+  #ndc-format-warn {
+    font-size: 11px;
+    color: var(--amber);
+    font-family: var(--mono);
+    margin-top: 5px;
+    display: none;
+  }
+  #ndc-format-warn.visible { display: block; }
+  #ndc-required-warn {
+    font-size: 11px;
+    color: var(--red);
+    font-family: var(--mono);
+    margin-top: 5px;
+    display: none;
+  }
+  #ndc-required-warn.visible { display: block; }
+
+  /* Input with clear button */
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 56px; }
+  .input-wrap input:disabled { opacity: 0.35; cursor: not-allowed; }
   .clear-btn {
-    background: none; border: 0.5px solid var(--border-strong);
-    border-radius: var(--radius); padding: 0 10px; height: 38px;
-    cursor: pointer; color: #888; font-size: 13px; flex-shrink: 0;
-    transition: background 0.15s;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
-  .clear-btn:hover { background: #f5f5f3; }
+  .clear-btn:hover { color: var(--text); border-color: var(--text-muted); }
 
-  .hint { font-size: 11px; color: #888; margin-top: 5px; }
-  .hint.warn { color: var(--amber); }
-
-  .btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; padding: 0.75rem 1rem; font-size: 15px; font-weight: 500;
-    cursor: pointer; border-radius: var(--radius);
-    border: 0.5px solid var(--border-strong);
-    background: #fff; color: #111;
-    transition: background 0.15s; font-family: inherit;
+  /* Barcode type buttons */
+  .btype-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .btype-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1.6;
   }
-  .btn:hover { background: #f5f5f3; }
-  .btn:active { transform: scale(0.98); }
-  .btn-primary { background: var(--green-mid); border-color: var(--green-mid); color: #fff; }
-  .btn-primary:hover { background: var(--green-dark); }
-  .btn-danger { background: var(--danger-bg); border-color: #f0a0a0; color: var(--danger); }
-  .btn-sm { width: auto; padding: 0.4rem 0.75rem; font-size: 13px; }
-
-  .btn-next-location {
-    display: none; align-items: center; gap: 12px;
-    width: 100%; padding: 1rem 1.1rem;
-    font-size: 15px; font-weight: 500; cursor: pointer;
-    border-radius: var(--radius-lg);
-    border: 2px solid var(--green-mid);
-    background: var(--green-mid); color: #fff;
-    transition: background 0.15s; font-family: inherit;
-    animation: fadeSlideIn 0.3s ease;
-  }
-  .btn-next-location:hover { background: var(--green-dark); border-color: var(--green-dark); }
-  .btn-next-location:active { transform: scale(0.98); }
-  .btn-next-location.visible { display: flex; }
-  .btn-next-location .nl-icon { font-size: 24px; }
-  .btn-next-location .nl-text { flex: 1; text-align: left; }
-  .btn-next-location .nl-title { display: block; font-size: 15px; font-weight: 600; }
-  .btn-next-location .nl-sub { display: block; font-size: 11px; opacity: 0.8; margin-top: 2px; }
-
-  @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+  .btype-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .btype-btn.selected {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
   }
 
-  .scan-btn {
-    display: flex; align-items: center; gap: 12px;
-    width: 100%; padding: 0.875rem 1rem;
-    cursor: pointer; border-radius: var(--radius);
-    border: 0.5px solid var(--border-strong);
-    background: #fff; color: #111;
-    transition: background 0.15s, border-color 0.15s;
-    text-align: left; font-family: inherit;
-  }
-  .scan-btn:hover { background: #f0faf6; border-color: var(--green-light); }
-  .scan-btn:active { transform: scale(0.98); }
-  .scan-btn .btn-icon { font-size: 24px; color: var(--green-light); flex-shrink: 0; }
-  .scan-btn .btn-text { flex: 1; }
-  .scan-btn .btn-title { display: block; font-size: 14px; font-weight: 600; color: #111; }
-  .scan-btn .btn-sub { display: block; font-size: 11px; color: #888; margin-top: 2px; }
-  .scan-btn .btn-arrow { font-size: 16px; color: #bbb; }
-
-  .scan-zone {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 0.6rem; border: 1.5px dashed var(--border-strong);
-    border-radius: var(--radius-lg); padding: 1.5rem 1rem;
-    min-height: 130px; text-align: center; cursor: pointer;
-    transition: all 0.2s;
-  }
-  .scan-zone:hover { border-color: var(--green-light); background: #f0faf6; }
-  .scan-zone.success { border-color: var(--green-light); border-style: solid; background: var(--green-bg); }
-  .scan-icon { font-size: 34px; color: #aaa; }
-  .scan-zone.success .scan-icon { color: var(--green-mid); }
-  .scan-label { font-size: 13px; color: #888; }
-  .scan-value { font-size: 15px; font-weight: 600; color: var(--green-mid); word-break: break-all; }
-
-  .video-wrapper {
-    display: none; border-radius: var(--radius-lg);
-    overflow: hidden; background: #000; position: relative;
-  }
-  .video-wrapper.visible { display: block; }
-  .video-wrapper video { width: 100%; display: block; }
-  .scan-crosshair {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
+  /* Barcode value input */
+  #input-barcode {
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    padding-right: 56px;
   }
 
-  .scanning-label {
-    display: none; text-align: center; font-size: 13px; color: #888;
-    align-items: center; gap: 6px; justify-content: center;
+  /* Save feedback */
+  #scan-feedback {
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 10px;
   }
-  .scanning-label.visible { display: flex; }
-  .pulse {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--green-light); animation: pulse 1.2s ease infinite;
-  }
-  @keyframes pulse {
-    0%,100% { opacity:1; transform:scale(1); }
-    50% { opacity:0.4; transform:scale(0.7); }
-  }
+  #scan-feedback.success { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  #scan-feedback.error   { display: flex; background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red);   }
 
-  .manual-toggle {
-    font-size: 12px; color: #888; text-align: center;
-    cursor: pointer; text-decoration: underline;
+  /* Right column */
+  .counter-big {
+    font-family: var(--mono);
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--green);
+    line-height: 1;
+    margin: 12px 0 4px;
   }
-  .manual-area { display: none; flex-direction: column; gap: 8px; margin-top: 6px; }
-  .manual-area.visible { display: flex; }
+  .counter-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .scan-meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); line-height: 1.9; }
+  .scan-meta .val { color: var(--text); }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 
-  .scan-row {
-    display: grid; grid-template-columns: auto 1fr auto;
-    gap: 8px; align-items: center;
-    padding: 7px 0; border-bottom: 0.5px solid var(--border); font-size: 12px;
-  }
-  .scan-row:last-child { border-bottom: none; }
-  .scan-type-badge {
-    display: inline-flex; align-items: center;
-    padding: 2px 8px; border-radius: 100px;
-    font-size: 10px; font-weight: 600; white-space: nowrap;
-  }
-  .badge-outer { background: var(--blue-bg); color: var(--blue-text); }
-  .badge-inner { background: var(--purple-bg); color: var(--purple-text); }
-  .badge-other { background: var(--gray-bg); color: var(--gray-text); }
-  .scan-val { color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .scan-time { color: #aaa; font-size: 11px; }
+  #next-item-btn { display: none; margin-top: 14px; }
+  #next-item-btn.visible { display: flex; }
 
-  .banner {
-    display: none; align-items: center; gap: 8px;
-    border-radius: var(--radius); padding: 0.6rem 0.75rem;
-    font-size: 12px;
+  .mini-list { margin-top: 16px; }
+  .mini-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: baseline;
   }
-  .banner.visible { display: flex; }
-  .banner-warn { background: var(--amber-bg); border: 0.5px solid #EF9F27; color: #633806; }
-  .banner i { font-size: 15px; color: var(--amber); flex-shrink: 0; }
-  .banner .banner-text { flex: 1; }
-  .banner-btn {
-    background: var(--amber); color: #fff; border: none;
-    border-radius: var(--radius); padding: 4px 10px;
-    font-size: 12px; cursor: pointer; white-space: nowrap; font-family: inherit;
-  }
-  .banner-btn:hover { background: #854F0B; }
+  .mini-item:last-child { border-bottom: none; }
+  .mini-item .ndc-val { color: var(--blue); }
+  .mini-item .bc { color: var(--text); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .metric {
-    background: #f5f5f3; border-radius: var(--radius);
-    padding: 0.75rem; text-align: center;
-  }
-  .metric-num { font-size: 24px; font-weight: 700; color: #111; }
-  .metric-label { font-size: 11px; color: #888; margin-top: 2px; }
+  /* ── Records ── */
+  .metrics-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  .metric-val { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--green); }
+  .metric-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
 
-  .entry-row {
-    display: grid; grid-template-columns: auto 1fr 1fr;
-    gap: 8px; align-items: center;
-    padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 12px;
-  }
-  .entry-row:last-child { border-bottom: none; }
+  .records-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .records-toolbar input { flex: 1; min-width: 200px; }
 
-  .toast {
-    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-    padding: 0.55rem 1.2rem; border-radius: 100px;
-    font-size: 13px; font-weight: 500; color: #fff;
-    opacity: 0; transition: opacity 0.25s;
-    pointer-events: none; white-space: nowrap; z-index: 999;
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+    cursor: pointer; white-space: nowrap; user-select: none;
   }
-  .toast.show { opacity: 1; }
-
-  .empty-state {
-    text-align: center; padding: 2rem 1rem; color: #aaa; font-size: 13px;
-  }
-
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-  }
-  .shake { animation: shake 0.3s ease; }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 9px 12px; color: var(--text-muted); }
+  tbody td.mono-val { color: var(--text); }
+  tbody td.ndc-val { color: var(--blue); }
+  .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; overflow-x: auto; }
+  .empty-row td { text-align: center; padding: 40px; color: var(--text-dim); }
 </style>
 </head>
 <body>
-<div id="app">
 
-  <!-- SCREEN 1: Setup -->
-  <div id="screen-setup" class="screen active">
-    <div class="header">
-      <i class="ti ti-building-store header-icon" aria-hidden="true"></i>
-      <h1>Pharmacy Inventory Scan</h1>
-    </div>
-
-    <div class="banner banner-warn" id="offline-banner">
-      <i class="ti ti-wifi-off" aria-hidden="true"></i>
-      <span class="banner-text">No internet — scans will save locally</span>
-    </div>
-
-    <div class="banner banner-warn" id="pending-banner">
-      <i class="ti ti-cloud-upload" aria-hidden="true"></i>
-      <span class="banner-text" id="pending-text">Unsynced scans waiting</span>
-      <button class="banner-btn" onclick="syncPending()">Sync now</button>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Your name <span style="color:#A32D2D; font-weight:400; text-transform:none; letter-spacing:0;">required</span></div>
-      <input type="text" id="user-name" placeholder="First and last name" autocomplete="name" />
-    </div>
-
-    <div class="card">
-      <div class="card-label">Select pharmacy</div>
-      <select id="pharmacy-select">
-        <option value="">— choose a pharmacy —</option>
-        <option>HCS RX DC</option>
-        <option>UNCH CIP</option>
-        <option>UNCH CHIP</option>
-        <option>UNCH PEDS</option>
-        <option>UNCH SHORP</option>
-        <option>UNCH ANDOR</option>
-        <option>UNCH INF TIC</option>
-        <option>UNCH INF RIC</option>
-        <option>UNCH INF PIC</option>
-        <option>REX IP</option>
-        <option>REXHS IP</option>
-        <option>CHT IP</option>
-        <option>YBH IP</option>
-        <option>HBR IP</option>
-      </select>
-    </div>
-
-    <button class="btn btn-primary" id="btn-to-location">
-      <i class="ti ti-scan" aria-hidden="true"></i> Continue to location scan
-    </button>
-    <button class="btn" id="btn-view-records">
-      <i class="ti ti-database" aria-hidden="true"></i> View collected records
-    </button>
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo">Rx<span> // </span>Scanner</div>
+    <span id="conn-pill" class="pill pill-green">● ONLINE</span>
   </div>
-
-  <!-- SCREEN 2: Scan location -->
-  <div id="screen-location" class="screen">
-    <div class="header">
-      <button class="back-btn" onclick="showScreen('setup')" aria-label="Back">
-        <i class="ti ti-arrow-left"></i>
-      </button>
-      <h1 id="loc-screen-pharmacy"></h1>
+  <div class="header-right">
+    <div class="user-badge" id="user-badge" style="display:none">
+      Scanning as <strong id="user-badge-name"></strong>
     </div>
-
-    <div class="card">
-      <div class="card-label">Scan location QR code</div>
-      <div class="scan-zone" id="loc-zone" onclick="startLocScan()" role="button" tabindex="0" aria-label="Tap to scan location QR code">
-        <i class="ti ti-qrcode scan-icon" id="loc-zone-icon" aria-hidden="true"></i>
-        <div class="scan-label" id="loc-zone-label">Tap to scan location</div>
-        <div class="scan-value" id="loc-zone-value" style="display:none;"></div>
-      </div>
-      <div class="scanning-label" id="loc-scanning-label">
-        <div class="pulse"></div> Scanning…
-      </div>
-    </div>
-
-    <div class="video-wrapper" id="loc-video-wrapper">
-      <div id="loc-video" style="width:100%;"></div>
-    </div>
-
-    <!-- Manual entry always visible -->
-    <div class="card">
-      <div class="card-label">Or enter location manually</div>
-      <div style="display:flex; gap:8px;">
-        <input type="text" id="manual-loc-input" placeholder="e.g. A-01-03" style="flex:1; text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
-        <button class="btn btn-sm btn-primary" onclick="confirmManualLoc()" style="white-space:nowrap;">Confirm</button>
-      </div>
-    </div>
-
-    <!-- Prior scan check — checking state, then result -->
-    <div id="prior-scan-checking" style="display:none; align-items:center; gap:8px; font-size:13px; color:#888; padding: 0 0.25rem;">
-      <div class="pulse"></div> Checking for prior scans…
-    </div>
-
-    <!-- Already scanned warning -->
-    <div id="already-scanned-banner" style="display:none; background:#FAEEDA; border:0.5px solid #EF9F27; border-radius:var(--radius-lg); padding:0.875rem 1rem;">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-        <i class="ti ti-clock-exclamation" style="font-size:16px; color:#BA7517; flex-shrink:0;" aria-hidden="true"></i>
-        <span style="font-size:13px; font-weight:600; color:#633806;">This location has prior scans</span>
-      </div>
-      <div id="already-scanned-detail" style="font-size:12px; color:#633806; padding-left:24px;"></div>
-    </div>
-
-    <button class="btn btn-primary" id="btn-to-scan" style="display:none;" onclick="proceedToScan()">
-      <i class="ti ti-arrow-right" aria-hidden="true"></i> Continue to scanning
-    </button>
-    <button class="btn" id="btn-rescan-loc" style="display:none;" onclick="resetLocScan()">
-      <i class="ti ti-refresh" aria-hidden="true"></i> Rescan location
-    </button>
+    <button class="btn btn-ghost btn-sm" id="change-user-btn" style="display:none" onclick="goSetup()">Change User</button>
   </div>
+</header>
 
-  <!-- SCREEN 3: Scanning -->
-  <div id="screen-scan" class="screen">
-    <div class="header">
-      <button class="back-btn" onclick="goBackToLocation()" aria-label="Back">
-        <i class="ti ti-arrow-left"></i>
-      </button>
-      <h1 id="scan-pharmacy-label" style="font-size:13px; flex:1;"></h1>
-      <div class="location-pill">
-        <i class="ti ti-map-pin" aria-hidden="true" style="font-size:11px;"></i>
-        <span id="scan-location-text"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <div>
-          <div class="card-label">E# <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
-          <div class="field-row">
-            <input type="text" id="field-enum" placeholder="e.g. E12345" />
-            <button class="clear-btn" onclick="clearField('field-enum')" aria-label="Clear E#">✕</button>
-          </div>
-        </div>
-        <div>
-          <div class="card-label">NDC-11 <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
-          <div class="field-row">
-            <input type="text" id="field-ndc" placeholder="00000-0000-00" inputmode="numeric" maxlength="13" oninput="checkNdc(this)" />
-            <button class="clear-btn" onclick="clearField('field-ndc')" aria-label="Clear NDC">✕</button>
-          </div>
-          <div class="hint warn" id="ndc-hint" style="display:none;">
-            <i class="ti ti-alert-triangle" style="font-size:11px;vertical-align:-1px;" aria-hidden="true"></i> Use NDC-11, not NDC-10
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Select barcode type to scan</div>
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="scan-btn" onclick="startBarcodeScan('outer')">
-          <i class="ti ti-package btn-icon" aria-hidden="true"></i>
-          <span class="btn-text">
-            <span class="btn-title">Outer barcode</span>
-            <span class="btn-sub">Case / shelf pack label</span>
-          </span>
-          <i class="ti ti-camera btn-arrow" aria-hidden="true"></i>
-        </button>
-        <button class="scan-btn" onclick="startBarcodeScan('inner')">
-          <i class="ti ti-box btn-icon" aria-hidden="true"></i>
-          <span class="btn-text">
-            <span class="btn-title">Inner barcode</span>
-            <span class="btn-sub">Unit / each label</span>
-          </span>
-          <i class="ti ti-camera btn-arrow" aria-hidden="true"></i>
-        </button>
-        <button class="scan-btn" onclick="startBarcodeScan('other')">
-          <i class="ti ti-scan btn-icon" aria-hidden="true" style="color:#aaa;"></i>
-          <span class="btn-text">
-            <span class="btn-title">Other barcode</span>
-            <span class="btn-sub">Any other label</span>
-          </span>
-          <i class="ti ti-camera btn-arrow" aria-hidden="true"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="video-wrapper" id="scan-video-wrapper">
-      <div id="scan-video" style="width:100%;"></div>
-    </div>
-
-    <div class="scanning-label" id="scan-scanning-label">
-      <div class="pulse"></div>
-      <span id="scan-scanning-text">Scanning…</span>
-    </div>
-
-    <div class="manual-toggle" id="scan-manual-toggle" style="display:none;" onclick="toggleManualScan()">
-      Enter barcode manually instead
-    </div>
-    <div class="manual-area" id="manual-scan-area">
-      <input type="text" id="manual-scan-input" placeholder="Enter barcode value" />
-      <button class="btn btn-sm btn-primary" onclick="confirmManualScan()">Confirm barcode</button>
-    </div>
-
-    <button class="btn btn-danger btn-sm" id="btn-cancel-scan" style="display:none; width:100%;" onclick="cancelBarcodeScan()">
-      <i class="ti ti-x" aria-hidden="true"></i> Cancel scan
-    </button>
-
-    <div class="card" id="recent-card" style="display:none;">
-      <div class="card-label" style="margin-bottom:8px;">Scans at this location</div>
-      <div id="recent-list"></div>
-    </div>
-
-    <button class="btn-next-location" id="btn-next-location" onclick="goBackToLocation()">
-      <i class="ti ti-map-pin nl-icon" aria-hidden="true"></i>
-      <span class="nl-text">
-        <span class="nl-title">Scan next location</span>
-        <span class="nl-sub" id="nl-sub">Done with this location?</span>
-      </span>
-      <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:18px;"></i>
-    </button>
+<!-- SYNC BANNER -->
+<div id="sync-banner">
+  <div class="sync-msg">
+    ⚠ <strong id="pending-count">0</strong> scan(s) pending sync —
+    <button class="btn btn-amber btn-sm" onclick="syncPending()">Sync Now</button>
   </div>
-
-  <!-- SCREEN 4: Records -->
-  <div id="screen-records" class="screen">
-    <div class="header">
-      <button class="back-btn" onclick="showScreen('setup')" aria-label="Back">
-        <i class="ti ti-arrow-left"></i>
-      </button>
-      <h1 style="flex:1;">Collected records</h1>
-      <button class="btn btn-sm" onclick="exportCSV()">
-        <i class="ti ti-download" aria-hidden="true"></i> CSV
-      </button>
-    </div>
-
-    <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px;">
-      <div class="metric"><div class="metric-num" id="m-total">0</div><div class="metric-label">Total scans</div></div>
-      <div class="metric"><div class="metric-num" id="m-pharmacies">0</div><div class="metric-label">Pharmacies</div></div>
-    </div>
-
-    <select id="filter-pharmacy" onchange="renderRecords()">
-      <option value="">All pharmacies</option>
-    </select>
-
-    <div class="card" style="padding:0;">
-      <div style="display:grid; grid-template-columns:auto 1fr 1fr; gap:8px; padding:8px 1rem; border-bottom:0.5px solid var(--border);">
-        <span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.04em;">Type</span>
-        <span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.04em;">Location</span>
-        <span style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.04em;">Barcode</span>
-      </div>
-      <div id="records-list" style="padding:0 1rem; max-height:420px; overflow-y:auto;">
-        <div class="empty-state">No records yet.</div>
-      </div>
-    </div>
-  </div>
-
 </div>
-<div class="toast" id="toast"></div>
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <button class="tab-btn active" data-tab="scan" onclick="switchTab('scan')">⬡ Scan</button>
+  <button class="tab-btn" data-tab="records" onclick="switchTab('records')">≡ Records</button>
+</nav>
+
+<main>
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup" class="screen active">
+    <div class="setup-card">
+      <div class="setup-title">// Inventory Scanner</div>
+      <div class="setup-sub">Enter your name to begin. It will be saved for future sessions.</div>
+      <div class="field">
+        <label for="input-name">Your Name</label>
+        <input type="text" id="input-name" placeholder="First Last" autocomplete="off" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="startSession()">Start Scanning →</button>
+    </div>
+  </div>
+
+  <!-- SCAN SCREEN -->
+  <div id="screen-scan" class="screen">
+    <div class="scan-layout">
+
+      <!-- LEFT: inputs -->
+      <div>
+
+        <!-- NDC (required) -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">💊 NDC-11 <span style="color:var(--red);font-size:10px;margin-left:4px">REQUIRED</span></div>
+          <div class="field" style="margin-bottom:0">
+            <div class="input-wrap">
+              <input type="text" id="input-ndc"
+                placeholder="Scan or type NDC-11…"
+                autocomplete="off"
+                oninput="onNdcInput()"
+                onkeydown="onNdcKey(event)"
+                maxlength="14" />
+              <button class="clear-btn" onclick="clearNDC()">Clear</button>
+            </div>
+            <div id="ndc-format-warn">⚠ Looks like NDC-10 — use NDC-11 format</div>
+            <div id="ndc-required-warn">NDC-11 is required before scanning a barcode</div>
+          </div>
+          <div id="ndc-check-box">
+            <span id="ndc-check-icon" class="pulse">◌</span>
+            <span id="ndc-check-msg"></span>
+          </div>
+        </div>
+
+        <!-- E# (optional) -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">E# <span style="color:var(--text-dim);font-size:10px;margin-left:4px">OPTIONAL</span></div>
+          <div class="input-wrap">
+            <input type="text" id="input-enum" placeholder="E12345" autocomplete="off" />
+            <button class="clear-btn" onclick="document.getElementById('input-enum').value=''">Clear</button>
+          </div>
+        </div>
+
+        <!-- Barcode -->
+        <div class="card">
+          <div class="card-title">⬡ Barcode</div>
+          <div class="btype-grid">
+            <button class="btype-btn" id="btype-outer" onclick="selectBarcodeType('outer')">
+              Outer<br><span style="font-size:9px;opacity:0.7">CASE / SHELF</span>
+            </button>
+            <button class="btype-btn" id="btype-inner" onclick="selectBarcodeType('inner')">
+              Inner<br><span style="font-size:9px;opacity:0.7">UNIT / EACH</span>
+            </button>
+            <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">
+              Other<br><span style="font-size:9px;opacity:0.7">BARCODE TYPE</span>
+            </button>
+          </div>
+          <div class="input-wrap">
+            <input type="text" id="input-barcode"
+              placeholder="Select type above, then scan…"
+              disabled autocomplete="off"
+              onkeydown="onBarcodeKey(event)" />
+            <button class="clear-btn" onclick="clearBarcode()">Clear</button>
+          </div>
+          <div id="scan-feedback"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: stats + recent -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">Session</div>
+          <div class="counter-big" id="session-count">0</div>
+          <div class="counter-label">Scans This Session</div>
+          <hr class="divider">
+          <div class="scan-meta">
+            <div>NDC: <span class="val" id="stat-ndc">—</span></div>
+            <div>E#: <span class="val" id="stat-enum">—</span></div>
+            <div>Last scan: <span class="val" id="stat-last">—</span></div>
+          </div>
+          <button class="btn btn-amber btn-sm btn-full" id="next-item-btn" onclick="nextItem()">
+            → Next Item
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Scans</div>
+          <div class="mini-list" id="mini-list">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 0">
+              No scans yet this session.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RECORDS SCREEN -->
+  <div id="screen-records" class="screen">
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-val" id="metric-total">0</div>
+        <div class="metric-label">Total Scans</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="metric-ndcs">0</div>
+        <div class="metric-label">Unique NDCs</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="metric-session">0</div>
+        <div class="metric-label">This Session</div>
+      </div>
+    </div>
+
+    <div class="records-toolbar">
+      <input type="text" id="filter-input" placeholder="Filter by NDC, barcode, E#, name…" oninput="renderRecordsTable()" />
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadRecords()">↻ Refresh</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('timestamp')">Time</th>
+            <th onclick="sortBy('ndc')">NDC-11</th>
+            <th onclick="sortBy('barcode_type')">Type</th>
+            <th onclick="sortBy('barcode_value')">Barcode</th>
+            <th onclick="sortBy('enum')">E#</th>
+            <th onclick="sortBy('scanned_by')">Scanned By</th>
+          </tr>
+        </thead>
+        <tbody id="records-tbody">
+          <tr class="empty-row"><td colspan="6">Loading records…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// ── Config ──
 const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1Z2hnc2lmZHFldm55anpnZnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MTk5NjQsImV4cCI6MjA5NDQ5NTk2NH0.sBfmP5vY171UhsPpa6Kv8vHt6NyMkuhSMTddBqF8Q5Q';
-const TABLE        = 'scans';
-const LOCAL_KEY    = 'pharm_inv_v4';
-const PENDING_KEY  = 'pharm_inv_pending';
-const NAME_KEY     = 'pharm_inv_username';
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-let currentPharmacy = '', currentLocation = '', currentUser = '';
-let currentScanType = null;
-let html5QrScanner = null;   // active Html5Qrcode instance
-let scannerTarget = null;    // 'location' | 'barcode'
+const sbHeaders = () => ({
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+});
+
+// ── State ──
+let userName = '';
+let ndcConfirmed = '';   // NDC value once confirmed (debounce settled + checked)
+let selectedBarcodeType = '';
 let sessionScans = [];
-let isOnline = navigator.onLine;
+let allRecords = [];
+let sortCol = 'timestamp';
+let sortDir = -1;
+let ndcDebounceTimer = null;
 
-// ─── CONNECTIVITY ─────────────────────────────────────────────────────────────
-window.addEventListener('online',  () => { isOnline = true;  updateConnStatus(); syncPending(); });
-window.addEventListener('offline', () => { isOnline = false; updateConnStatus(); });
+// ── Init ──
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('rxscanner_name');
+  if (saved) document.getElementById('input-name').value = saved;
+  updateOnlineStatus();
+  updateSyncBanner();
+});
+window.addEventListener('online',  () => { updateOnlineStatus(); updateSyncBanner(); });
+window.addEventListener('offline', () => updateOnlineStatus());
 
-function updateConnStatus() {
-  document.getElementById('offline-banner').classList.toggle('visible', !isOnline);
-  updatePendingBanner();
-}
-
-function getPending()   { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; } }
-function setPending(r)  { try { localStorage.setItem(PENDING_KEY, JSON.stringify(r)); } catch(e) {} }
-
-function updatePendingBanner() {
-  const pending = getPending();
-  const banner  = document.getElementById('pending-banner');
-  const txt     = document.getElementById('pending-text');
-  if (pending.length > 0 && isOnline) {
-    txt.textContent = `${pending.length} unsynced scan${pending.length > 1 ? 's' : ''} — tap to upload`;
-    banner.classList.add('visible');
+function updateOnlineStatus() {
+  const p = document.getElementById('conn-pill');
+  if (navigator.onLine) {
+    p.textContent = '● ONLINE'; p.className = 'pill pill-green';
   } else {
-    banner.classList.remove('visible');
+    p.textContent = '○ OFFLINE'; p.className = 'pill pill-red';
   }
 }
 
-// ─── SUPABASE ─────────────────────────────────────────────────────────────────
-async function postToSupabase(record) {
-  const resp = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify(record)
-  });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+function updateSyncBanner() {
+  const pending = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  const banner  = document.getElementById('sync-banner');
+  document.getElementById('pending-count').textContent = pending.length;
+  banner.classList.toggle('visible', pending.length > 0 && navigator.onLine);
 }
 
-async function syncPending() {
-  const pending = getPending();
-  if (!pending.length || !isOnline) return;
-  const failed = [];
-  for (const record of pending) {
-    try { await postToSupabase(record); }
-    catch(e) { failed.push(record); }
-  }
-  setPending(failed);
-  updatePendingBanner();
-  if (failed.length === 0 && pending.length > 0)
-    showToast(`${pending.length} record${pending.length > 1 ? 's' : ''} synced ✓`, '#0F6E56');
+// ── Setup ──
+document.getElementById('input-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startSession();
+});
+
+function startSession() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { document.getElementById('input-name').focus(); return; }
+  userName = name;
+  localStorage.setItem('rxscanner_name', name);
+  document.getElementById('user-badge-name').textContent = name;
+  document.getElementById('user-badge').style.display = '';
+  document.getElementById('change-user-btn').style.display = '';
+  document.getElementById('main-nav').style.display = '';
+  showScreen('scan');
+  switchTab('scan');
+  setTimeout(() => document.getElementById('input-ndc').focus(), 100);
 }
 
-// ─── SCANNER (html5-qrcode — proven iOS Safari support) ──────────────────────
-const H5Q_CONFIG = {
-  fps: 15,
-  qrbox: (viewfinderWidth, viewfinderHeight) => {
-    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-    const size = Math.floor(minEdge * 0.8);
-    return { width: size, height: size };
-  },
-  aspectRatio: 1.0,
-  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-  experimentalFeatures: {
-    // NOTE: BarcodeDetector is disabled intentionally — it does not support
-    // GS1 DataBar (RSS_14/RSS_EXPANDED). ZXing-js handles all formats correctly.
-    useBarCodeDetectorIfSupported: false,
-  },
-  formatsToSupport: [
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.CODE_93,
-    Html5QrcodeSupportedFormats.EAN_13,
-    Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,  // covers GS1 DataMatrix
-    Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.ITF,
-    Html5QrcodeSupportedFormats.AZTEC,
-    Html5QrcodeSupportedFormats.RSS_14,        // GS1 DataBar
-    Html5QrcodeSupportedFormats.RSS_EXPANDED,  // GS1 DataBar Expanded
-  ]
-};
-
-// Map html5-qrcode format enum values to human-readable symbology names
-const FORMAT_NAMES = {
-  0:  'QR Code',
-  1:  'Aztec',
-  2:  'Codabar',
-  3:  'Code 39',
-  4:  'Code 93',
-  5:  'Code 128',
-  6:  'Data Matrix',
-  7:  'EAN-8',
-  8:  'EAN-13',
-  9:  'ITF',
-  10: 'MaxiCode',
-  11: 'PDF417',
-  12: 'RSS-14 (GS1 DataBar)',
-  13: 'RSS Expanded (GS1 DataBar Expanded)',
-  14: 'UPC-A',
-  15: 'UPC-E',
-  16: 'UPC/EAN Extension',
-};
-
-async function startH5QScanner(elementId, target) {
-  await stopH5QScanner();
-  scannerTarget = target;
-  try {
-    html5QrScanner = new Html5Qrcode(elementId, { verbose: false });
-    await html5QrScanner.start(
-      { facingMode: 'environment' },
-      H5Q_CONFIG,
-      (decodedText, decodedResult) => {
-        let symbology = null;
-        try {
-          const fmt = decodedResult?.result?.format?.format ?? decodedResult?.format?.format;
-          symbology = FORMAT_NAMES[fmt] ?? ('Format ' + fmt);
-        } catch(e) {}
-        stopH5QScanner().then(() => {
-          if (target === 'location') onLocationScanned(decodedText);
-          else onBarcodeScanned(decodedText, symbology);
-        });
-      },
-      () => {}
-    );
-
-  } catch(e) {
-    html5QrScanner = null;
-    throw e;
-  }
+function goSetup() {
+  document.getElementById('main-nav').style.display = 'none';
+  document.getElementById('user-badge').style.display = 'none';
+  document.getElementById('change-user-btn').style.display = 'none';
+  showScreen('setup');
+  resetScanState();
 }
 
-async function stopH5QScanner() {
-  if (html5QrScanner) {
-    try {
-      const state = html5QrScanner.getState();
-      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-        await html5QrScanner.stop();
-      }
-    } catch(e) {}
-    try { html5QrScanner.clear(); } catch(e) {}
-    html5QrScanner = null;
-  }
-  scannerTarget = null;
-}
-
-// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+// ── Navigation ──
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
-  if (name === 'setup')   updatePendingBanner();
-  if (name === 'records') renderRecords();
 }
 
-// ─── TOAST ────────────────────────────────────────────────────────────────────
-function showToast(msg, color) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.background = color || '#0F6E56';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  showScreen(tab);
+  if (tab === 'records') loadRecords();
 }
 
-// ─── LOCAL STORAGE ────────────────────────────────────────────────────────────
-function getLocalRecords()   { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch(e) { return []; } }
-function saveLocalRecords(r) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(r)); } catch(e) {} }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ── NDC logic ──
+function onNdcInput() {
+  const el = document.getElementById('input-ndc');
+  const raw = el.value.replace(/[^0-9\-]/g, ''); // allow digits and dashes
+  el.value = raw;
 
-// ─── FIELD HELPERS ────────────────────────────────────────────────────────────
-function checkNdc(input) {
-  const raw = input.value.replace(/\D/g, '');
-  document.getElementById('ndc-hint').style.display = raw.length === 10 ? 'block' : 'none';
-}
-function clearField(id) {
-  document.getElementById(id).value = '';
-  if (id === 'field-ndc') document.getElementById('ndc-hint').style.display = 'none';
+  const digits = raw.replace(/\D/g, '');
+
+  // Format warnings
+  document.getElementById('ndc-format-warn').classList.toggle('visible', digits.length === 10);
+  document.getElementById('ndc-required-warn').classList.remove('visible');
+  el.classList.remove('invalid');
+
+  // Reset confirmed state & barcode when NDC changes
+  ndcConfirmed = '';
+  lockBarcode();
+  hideNdcCheck();
+  selectedBarcodeType = '';
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+
+  // Debounce: fire check after 600ms of no typing, only for 11-digit NDC
+  clearTimeout(ndcDebounceTimer);
+  if (digits.length === 11) {
+    ndcDebounceTimer = setTimeout(() => confirmNDC(raw), 600);
+  }
 }
 
-// ─── SCREEN 1 → 2 ────────────────────────────────────────────────────────────
-document.getElementById('btn-to-location').addEventListener('click', () => {
-  const nameEl = document.getElementById('user-name');
-  const sel    = document.getElementById('pharmacy-select');
-  if (!nameEl.value.trim()) {
-    showToast('Please enter your name', '#BA7517');
-    nameEl.classList.add('shake');
-    setTimeout(() => nameEl.classList.remove('shake'), 350);
-    nameEl.focus();
+function onNdcKey(e) {
+  if (e.key === 'Enter') {
+    clearTimeout(ndcDebounceTimer);
+    const raw = document.getElementById('input-ndc').value.trim();
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 11) {
+      confirmNDC(raw);
+    } else {
+      document.getElementById('input-ndc').classList.add('invalid');
+      document.getElementById('ndc-required-warn').textContent = 'NDC-11 must be 11 digits';
+      document.getElementById('ndc-required-warn').classList.add('visible');
+    }
+  }
+}
+
+async function confirmNDC(rawValue) {
+  ndcConfirmed = rawValue;
+  document.getElementById('stat-ndc').textContent = rawValue;
+
+  if (!navigator.onLine) {
+    // offline — skip check, allow scanning
+    hideNdcCheck();
+    unlockBarcode();
     return;
   }
-  if (!sel.value) {
-    showToast('Please select a pharmacy', '#BA7517');
-    sel.classList.add('shake');
-    setTimeout(() => sel.classList.remove('shake'), 350);
-    return;
-  }
-  currentUser     = nameEl.value.trim();
-  currentPharmacy = sel.value;
-  try { localStorage.setItem(NAME_KEY, currentUser); } catch(e) {}
-  document.getElementById('loc-screen-pharmacy').textContent = sel.value;
-  showScreen('location');
-});
 
-document.getElementById('btn-view-records').addEventListener('click', () => showScreen('records'));
+  // Show checking state
+  const box  = document.getElementById('ndc-check-box');
+  const icon = document.getElementById('ndc-check-icon');
+  const msg  = document.getElementById('ndc-check-msg');
+  box.className  = 'checking';
+  icon.className = 'pulse';
+  icon.textContent = '◌';
+  msg.textContent  = 'Checking for prior scans of this NDC…';
 
-// ─── LOCATION SCANNING ────────────────────────────────────────────────────────
-async function startLocScan() {
-  if (html5QrScanner) return;
-  document.getElementById('loc-video-wrapper').classList.add('visible');
-  document.getElementById('loc-scanning-label').classList.add('visible');
   try {
-    await startH5QScanner('loc-video', 'location');
-  } catch(e) {
-    document.getElementById('loc-video-wrapper').classList.remove('visible');
-    document.getElementById('loc-scanning-label').classList.remove('visible');
-    showToast('Camera unavailable — enter manually below', '#BA7517');
-    document.getElementById('manual-loc-input').focus();
-  }
-}
-
-function stopLocCamera() {
-  stopH5QScanner();
-  document.getElementById('loc-video-wrapper').classList.remove('visible');
-  document.getElementById('loc-scanning-label').classList.remove('visible');
-}
-
-function confirmManualLoc() {
-  const val = document.getElementById('manual-loc-input').value.trim();
-  if (!val) { showToast('Please enter a location', '#BA7517'); return; }
-  onLocationScanned(val);
-}
-
-async function onLocationScanned(val) {
-  val = val.trim().toUpperCase();
-  stopLocCamera();
-  currentLocation = val;
-  document.getElementById('loc-zone').classList.add('success');
-  document.getElementById('loc-zone-icon').style.display  = 'none';
-  document.getElementById('loc-zone-label').style.display = 'none';
-  const lv = document.getElementById('loc-zone-value');
-  lv.style.display = 'block'; lv.textContent = val;
-  document.getElementById('btn-to-scan').style.display    = 'flex';
-  document.getElementById('btn-rescan-loc').style.display = 'flex';
-  document.getElementById('already-scanned-banner').style.display = 'none';
-  showToast('Location scanned ✓');
-  checkPriorScans(val);
-}
-
-async function checkPriorScans(location) {
-  const checking = document.getElementById('prior-scan-checking');
-  const banner   = document.getElementById('already-scanned-banner');
-  banner.style.display   = 'none';
-  checking.style.display = 'flex';
-  if (!isOnline) { checking.style.display = 'none'; return; }
-  try {
-    const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/${TABLE}?pharmacy=eq.${encodeURIComponent(currentPharmacy)}&location=eq.${encodeURIComponent(location)}&order=timestamp.desc&limit=1`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    const digits = rawValue.replace(/\D/g, '');
+    // Match on digits in ndc field (handles dashes or no dashes in stored value)
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scans?ndc=ilike.*${digits}*&order=created_at.desc&limit=1`,
+      { headers: sbHeaders() }
     );
-    checking.style.display = 'none';
-    if (!resp.ok) return;
-    const rows = await resp.json();
-    if (!rows.length) return;
-    const r = rows[0];
-    const when = new Date(r.timestamp);
-    const dateStr = when.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-    const timeStr = when.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
-    const by = r.scanned_by ? ` by ${r.scanned_by}` : '';
-    document.getElementById('already-scanned-detail').textContent =
-      `Last scanned ${dateStr} at ${timeStr}${by}`;
-    banner.style.display = 'block';
-  } catch(e) { checking.style.display = 'none'; }
-}
+    const data = await res.json();
 
-function resetLocScan() {
-  currentLocation = '';
-  document.getElementById('loc-zone').classList.remove('success');
-  document.getElementById('loc-zone-icon').style.display  = '';
-  document.getElementById('loc-zone-label').style.display = '';
-  document.getElementById('loc-zone-value').style.display = 'none';
-  document.getElementById('btn-to-scan').style.display    = 'none';
-  document.getElementById('btn-rescan-loc').style.display = 'none';
-  document.getElementById('already-scanned-banner').style.display = 'none';
-  document.getElementById('prior-scan-checking').style.display    = 'none';
-  document.getElementById('manual-loc-input').value = '';
-}
-
-function proceedToScan() {
-  sessionScans = [];
-  document.getElementById('scan-pharmacy-label').textContent =
-    currentPharmacy + (currentUser ? ' · ' + currentUser : '');
-  document.getElementById('scan-location-text').textContent = currentLocation;
-  document.getElementById('recent-card').style.display = 'none';
-  document.getElementById('field-enum').value = '';
-  document.getElementById('field-ndc').value  = '';
-  document.getElementById('ndc-hint').style.display = 'none';
-  document.getElementById('btn-next-location').classList.remove('visible');
-  cancelBarcodeScan();
-  showScreen('scan');
-}
-
-function goBackToLocation() { cancelBarcodeScan(); resetLocScan(); showScreen('location'); }
-
-// ─── BARCODE SCANNING ─────────────────────────────────────────────────────────
-async function startBarcodeScan(type) {
-  if (html5QrScanner) await stopH5QScanner();
-  currentScanType = type;
-  const labels = { outer: 'outer barcode', inner: 'inner barcode', other: 'other barcode' };
-  document.getElementById('scan-scanning-text').textContent = 'Scanning ' + labels[type] + '…';
-  document.getElementById('scan-video-wrapper').classList.add('visible');
-  document.getElementById('scan-scanning-label').classList.add('visible');
-  document.getElementById('btn-cancel-scan').style.display = 'flex';
-  document.getElementById('scan-manual-toggle').style.display = 'block';
-  try {
-    await startH5QScanner('scan-video', 'barcode');
-  } catch(e) {
-    document.getElementById('scan-video-wrapper').classList.remove('visible');
-    document.getElementById('scan-scanning-label').classList.remove('visible');
-    document.getElementById('btn-cancel-scan').style.display = 'none';
-    showToast('Camera unavailable — enter manually', '#BA7517');
-    document.getElementById('manual-scan-area').classList.add('visible');
+    if (data && data.length > 0) {
+      const s = data[0];
+      const dt = new Date(s.timestamp || s.created_at);
+      const when = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+        ' at ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      box.className    = 'found';
+      icon.className   = '';
+      icon.textContent = '⚠';
+      msg.innerHTML    = `<strong>Already scanned</strong> — last recorded ${when} by <strong>${s.scanned_by || 'unknown'}</strong>`;
+    } else {
+      box.className    = 'clear';
+      icon.className   = '';
+      icon.textContent = '✓';
+      msg.textContent  = 'NDC not previously scanned — good to go';
+      // Auto-dismiss after 3s
+      setTimeout(() => { if (box.className === 'clear') hideNdcCheck(); }, 3000);
+    }
+  } catch {
+    hideNdcCheck();
   }
+
+  unlockBarcode();
 }
 
-function stopScanCamera() {
-  stopH5QScanner();
-  document.getElementById('scan-video-wrapper').classList.remove('visible');
-  document.getElementById('scan-scanning-label').classList.remove('visible');
-  document.getElementById('btn-cancel-scan').style.display = 'none';
+function hideNdcCheck() {
+  const box = document.getElementById('ndc-check-box');
+  box.className = '';
+  box.style.display = 'none';
+  setTimeout(() => box.style.display = '', 10);
 }
 
-function cancelBarcodeScan() {
-  stopScanCamera();
-  document.getElementById('scan-manual-toggle').style.display = 'none';
-  document.getElementById('manual-scan-area').classList.remove('visible');
-  currentScanType = null;
+function clearNDC() {
+  document.getElementById('input-ndc').value = '';
+  document.getElementById('input-ndc').classList.remove('invalid');
+  document.getElementById('ndc-format-warn').classList.remove('visible');
+  document.getElementById('ndc-required-warn').classList.remove('visible');
+  ndcConfirmed = '';
+  hideNdcCheck();
+  lockBarcode();
+  selectedBarcodeType = '';
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+  clearTimeout(ndcDebounceTimer);
+  document.getElementById('input-ndc').focus();
 }
 
-function toggleManualScan() {
-  const a = document.getElementById('manual-scan-area');
-  a.classList.toggle('visible');
-  if (a.classList.contains('visible')) document.getElementById('manual-scan-input').focus();
+// ── Barcode type ──
+function selectBarcodeType(type) {
+  if (!ndcConfirmed) {
+    document.getElementById('ndc-required-warn').textContent = 'Enter and confirm NDC-11 before selecting barcode type';
+    document.getElementById('ndc-required-warn').classList.add('visible');
+    document.getElementById('input-ndc').focus();
+    return;
+  }
+  selectedBarcodeType = type;
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btype-' + type).classList.add('selected');
+  unlockBarcode();
+  document.getElementById('input-barcode').focus();
+  hideFeedback();
 }
 
-function confirmManualScan() {
-  const val = document.getElementById('manual-scan-input').value.trim();
-  if (!val) { showToast('Please enter a barcode value', '#BA7517'); return; }
-  document.getElementById('manual-scan-input').value = '';
-  document.getElementById('manual-scan-area').classList.remove('visible');
-  onBarcodeScanned(val, 'Manual entry');
+function lockBarcode() {
+  const bi = document.getElementById('input-barcode');
+  bi.disabled = true;
+  bi.value = '';
+  bi.placeholder = 'Select type above, then scan…';
 }
 
-// ─── SAVE RECORD ──────────────────────────────────────────────────────────────
-async function onBarcodeScanned(value, symbology) {
+function unlockBarcode() {
+  if (!ndcConfirmed || !selectedBarcodeType) return;
+  const bi = document.getElementById('input-barcode');
+  bi.disabled = false;
+  bi.placeholder = 'Scan or type barcode, then press Enter…';
+}
+
+// ── Barcode input ──
+function onBarcodeKey(e) {
+  if (e.key === 'Enter') saveScan();
+}
+
+function clearBarcode() {
+  document.getElementById('input-barcode').value = '';
+  document.getElementById('input-barcode').focus();
+  hideFeedback();
+}
+
+// ── Save ──
+async function saveScan() {
+  if (!ndcConfirmed) {
+    document.getElementById('ndc-required-warn').textContent = 'NDC-11 is required';
+    document.getElementById('ndc-required-warn').classList.add('visible');
+    document.getElementById('input-ndc').focus();
+    return;
+  }
+  if (!selectedBarcodeType) {
+    showFeedback('Select Outer, Inner, or Other first.', false);
+    return;
+  }
+  const barcodeVal = document.getElementById('input-barcode').value.trim();
+  if (!barcodeVal) return;
+
+  const now = new Date();
   const record = {
-    pharmacy:      currentPharmacy,
-    location:      currentLocation,
-    scanned_by:    currentUser || null,
-    enum:          document.getElementById('field-enum').value.trim() || null,
-    ndc:           document.getElementById('field-ndc').value.trim()  || null,
-    barcode_type:  currentScanType,
-    barcode_value: value,
-    symbology:     symbology || null,
-    timestamp:     new Date().toISOString(),
-    scanned_at:    new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
+    pharmacy:      null,
+    location:      null,
+    scanned_by:    userName,
+    enum:          document.getElementById('input-enum').value.trim() || null,
+    ndc:           ndcConfirmed,
+    barcode_type:  selectedBarcodeType,
+    barcode_value: barcodeVal,
+    symbology:     'Connected reader',
+    scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    timestamp:     now.toISOString()
   };
 
-  const locals = getLocalRecords();
-  locals.push(record);
-  saveLocalRecords(locals);
-  sessionScans.push(record);
-  currentScanType = null;
-  document.getElementById('scan-manual-toggle').style.display = 'none';
+  // Always persist locally
+  const local = JSON.parse(localStorage.getItem('rxscanner_local') || '[]');
+  local.push(record);
+  localStorage.setItem('rxscanner_local', JSON.stringify(local));
 
-  const count = sessionScans.length;
-  document.getElementById('nl-sub').textContent =
-    `${count} scan${count > 1 ? 's' : ''} saved — done with this location?`;
-  document.getElementById('btn-next-location').classList.add('visible');
-  renderRecentScans();
-
-  if (isOnline) {
+  // Try Supabase
+  if (navigator.onLine) {
     try {
-      await postToSupabase(record);
-      showToast('Saved to database ✓', '#0F6E56');
-    } catch(e) {
-      const pending = getPending(); pending.push(record); setPending(pending);
-      showToast('Saved locally — will sync when online', '#BA7517');
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/scans`, {
+        method: 'POST', headers: sbHeaders(), body: JSON.stringify(record)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      showFeedback(`✓ Saved — ${ndcConfirmed} / ${selectedBarcodeType} / ${barcodeVal}`, true);
+    } catch {
+      enqueuePending(record);
+      showFeedback('⚠ Saved locally (Supabase error)', false);
     }
   } else {
-    const pending = getPending(); pending.push(record); setPending(pending);
-    showToast('Saved locally (offline)', '#BA7517');
+    enqueuePending(record);
+    showFeedback('⚠ Saved locally (offline)', false);
   }
+
+  // Update session
+  sessionScans.unshift(record);
+  document.getElementById('session-count').textContent = sessionScans.length;
+  document.getElementById('stat-last').textContent = record.scanned_at;
+  document.getElementById('stat-enum').textContent = record.enum || '—';
+  document.getElementById('next-item-btn').classList.add('visible');
+
+  // Reset for next barcode at this item
+  document.getElementById('input-barcode').value = '';
+  selectedBarcodeType = '';
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('input-barcode').disabled = true;
+
+  updateMiniList();
+  updateSyncBanner();
 }
 
-// ─── RECENT SCANS ─────────────────────────────────────────────────────────────
-function renderRecentScans() {
-  if (!sessionScans.length) return;
-  document.getElementById('recent-card').style.display = 'block';
-  const bc = { outer:'badge-outer', inner:'badge-inner', other:'badge-other' };
-  document.getElementById('recent-list').innerHTML = [...sessionScans].reverse().slice(0,8).map(r => `
-    <div class="scan-row">
-      <span class="scan-type-badge ${bc[r.barcode_type]}">${r.barcode_type}</span>
-      <span class="scan-val" title="${esc(r.barcode_value)}">${esc(r.barcode_value)}</span>
-      <span class="scan-time">${r.scanned_at}</span>
+function enqueuePending(rec) {
+  const p = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  p.push(rec);
+  localStorage.setItem('rxscanner_pending', JSON.stringify(p));
+}
+
+// ── Sync pending ──
+async function syncPending() {
+  const p = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  let failed = [];
+  for (const rec of p) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/scans`, {
+        method: 'POST', headers: sbHeaders(), body: JSON.stringify(rec)
+      });
+      if (!res.ok) throw new Error();
+    } catch { failed.push(rec); }
+  }
+  localStorage.setItem('rxscanner_pending', JSON.stringify(failed));
+  updateSyncBanner();
+}
+
+// ── Feedback ──
+let feedbackTimer;
+function showFeedback(msg, success) {
+  const el = document.getElementById('scan-feedback');
+  el.className = success ? 'success' : 'error';
+  el.textContent = msg;
+  clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(hideFeedback, 5000);
+}
+function hideFeedback() {
+  const el = document.getElementById('scan-feedback');
+  el.className = '';
+  el.style.display = 'none';
+  setTimeout(() => el.style.display = '', 20);
+}
+
+// ── Next item ──
+function nextItem() {
+  clearNDC();
+  document.getElementById('input-enum').value = '';
+  document.getElementById('input-barcode').value = '';
+  lockBarcode();
+  hideFeedback();
+  document.getElementById('next-item-btn').classList.remove('visible');
+  document.getElementById('stat-ndc').textContent = '—';
+  document.getElementById('stat-enum').textContent = '—';
+  document.getElementById('input-ndc').focus();
+}
+
+function resetScanState() {
+  clearNDC();
+  document.getElementById('input-enum').value = '';
+  lockBarcode();
+  hideFeedback();
+  document.getElementById('next-item-btn').classList.remove('visible');
+  document.getElementById('stat-ndc').textContent = '—';
+  document.getElementById('stat-enum').textContent = '—';
+  document.getElementById('stat-last').textContent = '—';
+}
+
+// ── Mini list ──
+function updateMiniList() {
+  const el = document.getElementById('mini-list');
+  if (!sessionScans.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 0">No scans yet this session.</div>';
+    return;
+  }
+  el.innerHTML = sessionScans.slice(0, 8).map(s => `
+    <div class="mini-item">
+      <span class="ndc-val">${s.ndc || '—'}</span>
+      <span class="bc">${s.barcode_value}</span>
+      <span>${s.scanned_at}</span>
     </div>`).join('');
 }
 
-// ─── RECORDS SCREEN ───────────────────────────────────────────────────────────
-function renderRecords() {
-  const records   = getLocalRecords();
-  const fp        = document.getElementById('filter-pharmacy').value;
-  const filtered  = fp ? records.filter(r => r.pharmacy === fp) : records;
-  const pharmacies = [...new Set(records.map(r => r.pharmacy))];
-  const sel = document.getElementById('filter-pharmacy');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">All pharmacies</option>';
-  pharmacies.forEach(p => {
-    const o = document.createElement('option');
-    o.value = p; o.textContent = p;
-    if (p === cur) o.selected = true;
-    sel.appendChild(o);
+// ── Records ──
+async function loadRecords() {
+  document.getElementById('records-tbody').innerHTML =
+    '<tr class="empty-row"><td colspan="6">Loading…</td></tr>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scans?order=created_at.desc&limit=2000`,
+      { headers: sbHeaders() }
+    );
+    allRecords = await res.json();
+  } catch {
+    allRecords = JSON.parse(localStorage.getItem('rxscanner_local') || '[]');
+  }
+  document.getElementById('metric-total').textContent = allRecords.length;
+  document.getElementById('metric-ndcs').textContent = new Set(allRecords.map(r => r.ndc).filter(Boolean)).size;
+  document.getElementById('metric-session').textContent = sessionScans.length;
+  renderRecordsTable();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  renderRecordsTable();
+}
+
+function renderRecordsTable() {
+  const f = document.getElementById('filter-input').value.toLowerCase();
+  let rows = allRecords.filter(r =>
+    !f ||
+    (r.ndc           || '').toLowerCase().includes(f) ||
+    (r.barcode_value || '').toLowerCase().includes(f) ||
+    (r.enum          || '').toLowerCase().includes(f) ||
+    (r.scanned_by    || '').toLowerCase().includes(f)
+  );
+  rows.sort((a, b) => {
+    const av = a[sortCol] || '', bv = b[sortCol] || '';
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
   });
-  document.getElementById('m-total').textContent      = records.length;
-  document.getElementById('m-pharmacies').textContent = pharmacies.length;
-  const bc   = { outer:'badge-outer', inner:'badge-inner', other:'badge-other' };
-  const list = document.getElementById('records-list');
-  if (!filtered.length) { list.innerHTML = '<div class="empty-state">No records yet.</div>'; return; }
-  list.innerHTML = [...filtered].reverse().map(r => `
-    <div class="entry-row">
-      <span class="scan-type-badge ${bc[r.barcode_type]||'badge-other'}">${esc(r.barcode_type)}</span>
-      <span style="font-size:12px;color:#888;">${esc(r.location)}</span>
-      <span style="font-size:12px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.barcode_value)}</span>
-    </div>`).join('');
-}
-
-// ─── CSV EXPORT ───────────────────────────────────────────────────────────────
-function exportCSV() {
-  const records = getLocalRecords();
-  if (!records.length) { showToast('No records to export', '#BA7517'); return; }
-  const fp      = document.getElementById('filter-pharmacy')?.value || '';
-  const filtered = fp ? records.filter(r => r.pharmacy === fp) : records;
-  const csv = 'Pharmacy,Location,ScannedBy,E#,NDC,BarcodeType,BarcodeValue,Symbology,Timestamp\n' +
-    filtered.map(r =>
-      [r.pharmacy, r.location, r.scanned_by||'', r.enum||'', r.ndc||'', r.barcode_type, r.barcode_value, r.symbology||'', r.timestamp]
-        .map(v => `"${String(v||'').replace(/"/g,'""')}"`)
-        .join(',')
-    ).join('\n');
-  const a = document.createElement('a');
-  a.href     = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `inventory_scan_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  showToast('CSV exported!');
-}
-
-// ─── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (document.activeElement?.id === 'manual-loc-input')  confirmManualLoc();
-    if (document.activeElement?.id === 'manual-scan-input') confirmManualScan();
+  const tbody = document.getElementById('records-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No records found.</td></tr>';
+    return;
   }
-});
+  tbody.innerHTML = rows.map(r => {
+    const dt = r.timestamp ? new Date(r.timestamp) : null;
+    const timeStr = dt
+      ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : (r.scanned_at || '');
+    return `<tr>
+      <td>${timeStr}</td>
+      <td class="ndc-val">${r.ndc || ''}</td>
+      <td>${r.barcode_type || ''}</td>
+      <td class="mono-val">${r.barcode_value || ''}</td>
+      <td>${r.enum || ''}</td>
+      <td>${r.scanned_by || ''}</td>
+    </tr>`;
+  }).join('');
+}
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-try {
-  const savedName = localStorage.getItem(NAME_KEY);
-  if (savedName) document.getElementById('user-name').value = savedName;
-} catch(e) {}
-
-updateConnStatus();
+function exportCSV() {
+  const f = document.getElementById('filter-input').value.toLowerCase();
+  const rows = allRecords.filter(r =>
+    !f ||
+    (r.ndc||'').toLowerCase().includes(f) ||
+    (r.barcode_value||'').toLowerCase().includes(f) ||
+    (r.enum||'').toLowerCase().includes(f) ||
+    (r.scanned_by||'').toLowerCase().includes(f)
+  );
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','enum','scanned_by','symbology'];
+  const csv = [cols.join(','), ...rows.map(r =>
+    cols.map(c => JSON.stringify(r[c] || '')).join(',')
+  )].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `rx-scans-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
 </script>
 </body>
 </html>
