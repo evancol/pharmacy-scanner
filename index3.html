@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pharmacy Inventory Scanner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Rx Scanner — HC50</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -28,15 +29,37 @@
     --red-dim: #3a1010;
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'IBM Plex Sans', sans-serif;
+    --tap: 48px; /* minimum tap target height */
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body.light-mode {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --surface2: #eaeef2;
+    --border: #d0d7de;
+    --border-light: #e4e9ef;
+    --text: #1f2328;
+    --text-muted: #656d76;
+    --text-dim: #adb5bd;
+    --green: #1a7f37;
+    --green-dim: #dafbe1;
+    --green-glow: rgba(26,127,55,0.12);
+    --amber: #9a6700;
+    --amber-dim: #fff8c5;
+    --amber-glow: rgba(154,103,0,0.12);
+    --blue: #0969da;
+    --blue-dim: #ddf4ff;
+    --red: #d1242f;
+    --red-dim: #ffebe9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--sans);
-    font-size: 14px;
+    font-size: 16px; /* larger base for handheld readability */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -46,7 +69,7 @@
   header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -54,7 +77,6 @@
     top: 0;
     z-index: 100;
   }
-  .header-left { display: flex; align-items: center; gap: 16px; }
   .logo {
     font-family: var(--mono);
     font-size: 13px;
@@ -64,59 +86,58 @@
     text-transform: uppercase;
   }
   .logo span { color: var(--text-muted); }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+
   .pill {
     font-family: var(--mono);
-    font-size: 11px;
-    padding: 2px 8px;
+    font-size: 10px;
+    padding: 2px 7px;
     border-radius: 20px;
     border: 1px solid;
   }
   .pill-green { border-color: var(--green); color: var(--green); background: var(--green-dim); }
-  .pill-red   { border-color: var(--red);   color: var(--red);   background: var(--red-dim);   }
-
-  .header-right { display: flex; align-items: center; gap: 12px; }
-  .user-badge { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
-  .user-badge strong { color: var(--text); }
-
-  /* ── Nav tabs ── */
-  nav {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-  }
-  .tab-btn {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 12px 18px;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-  }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+  .pill-red   { border-color: var(--red);   color: var(--red);   background: var(--red-dim); }
 
   /* ── Sync banner ── */
   #sync-banner {
     background: var(--amber-dim);
     border-bottom: 1px solid var(--amber);
-    padding: 10px 24px;
+    padding: 10px 14px;
     display: none;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
   }
   #sync-banner.visible { display: flex; }
   .sync-msg { font-size: 13px; color: var(--amber); flex: 1; }
   .sync-msg strong { font-family: var(--mono); }
 
+  /* ── Nav ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+  }
+  #main-nav { display: none; }
+  .tab-btn {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 8px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+  }
+  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
   /* ── Main ── */
-  main { flex: 1; padding: 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+  main { flex: 1; padding: 12px; }
   .screen { display: none; }
   .screen.active { display: block; }
 
@@ -124,22 +145,20 @@
   .setup-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 48px;
-    max-width: 480px;
-    margin: 48px auto;
+    border-radius: 10px;
+    padding: 28px 20px;
+    margin-top: 24px;
   }
   .setup-title {
     font-family: var(--mono);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--green);
-    margin-bottom: 8px;
-    letter-spacing: 0.04em;
+    margin-bottom: 6px;
   }
-  .setup-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+  .setup-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
 
-  /* ── Forms ── */
+  /* ── Form elements ── */
   label {
     display: block;
     font-family: var(--mono);
@@ -150,29 +169,26 @@
     color: var(--text-muted);
     margin-bottom: 6px;
   }
-  label .required { color: var(--red); margin-left: 3px; }
-  input[type="text"] {
+  input[type="text"], textarea {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--text);
     font-family: var(--mono);
-    font-size: 14px;
-    padding: 10px 14px;
+    font-size: 16px; /* prevents iOS/Android zoom on focus */
+    padding: 13px 14px;
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
   }
-  input[type="text"]:focus {
+  input[type="text"]:focus, textarea:focus {
     border-color: var(--green);
     box-shadow: 0 0 0 3px var(--green-glow);
   }
-  input[type="text"].invalid {
-    border-color: var(--red);
-    box-shadow: 0 0 0 3px rgba(248,81,73,0.15);
-  }
-  input[type="text"]::placeholder { color: var(--text-dim); }
-  .field { margin-bottom: 20px; }
+  input[type="text"].invalid { border-color: var(--red); box-shadow: 0 0 0 3px rgba(248,81,73,0.15); }
+  input[type="text"]::placeholder, textarea::placeholder { color: var(--text-dim); }
+  .field { margin-bottom: 16px; }
 
   /* ── Buttons ── */
   .btn {
@@ -181,33 +197,34 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 10px 20px;
-    border-radius: 6px;
+    padding: 13px 18px;
+    min-height: var(--tap);
+    border-radius: 8px;
     border: 1px solid;
     cursor: pointer;
     transition: all 0.15s;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    -webkit-appearance: none;
+    touch-action: manipulation;
   }
   .btn-primary { background: var(--green); border-color: var(--green); color: #0d1117; }
-  .btn-primary:hover { filter: brightness(1.1); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .btn-primary:active { filter: brightness(0.9); }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-muted); }
-  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-ghost:active { border-color: var(--text-muted); color: var(--text); }
   .btn-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
-  .btn-amber:hover { filter: brightness(1.2); }
-  .btn-sm { padding: 6px 12px; font-size: 11px; }
-  .btn-full { width: 100%; justify-content: center; }
+  .btn-sm { padding: 10px 14px; font-size: 11px; min-height: 40px; }
+  .btn-full { width: 100%; }
 
-  /* ── Scan layout ── */
-  .scan-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
+  /* ── Card ── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
   }
   .card-title {
     font-family: var(--mono);
@@ -216,65 +233,15 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  /* NDC duplicate check box */
-  #ndc-check-box {
-    border-radius: 6px;
-    padding: 12px 14px;
-    margin-top: 10px;
-    font-size: 13px;
-    display: none;
-    align-items: flex-start;
-    gap: 10px;
-    line-height: 1.5;
-  }
-  #ndc-check-box.checking {
-    display: flex;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-  }
-  #ndc-check-box.found {
-    display: flex;
-    background: var(--amber-dim);
-    border: 1px solid var(--amber);
-    color: var(--amber);
-  }
-  #ndc-check-box.clear {
-    display: flex;
-    background: var(--green-dim);
-    border: 1px solid var(--green);
-    color: var(--green);
-  }
-  .pulse { animation: pulse 1.2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-
-  #ndc-format-warn {
-    font-size: 11px;
-    color: var(--amber);
-    font-family: var(--mono);
-    margin-top: 5px;
-    display: none;
-  }
-  #ndc-format-warn.visible { display: block; }
-  #ndc-required-warn {
-    font-size: 11px;
-    color: var(--red);
-    font-family: var(--mono);
-    margin-top: 5px;
-    display: none;
-  }
-  #ndc-required-warn.visible { display: block; }
-
   /* Input with clear button */
   .input-wrap { position: relative; }
-  .input-wrap input { padding-right: 56px; }
-  .input-wrap input:disabled { opacity: 0.35; cursor: not-allowed; }
+  .input-wrap input { padding-right: 60px; }
   .clear-btn {
     position: absolute;
     right: 8px;
@@ -282,333 +249,229 @@
     transform: translateY(-50%);
     font-family: var(--mono);
     font-size: 10px;
-    padding: 3px 7px;
+    padding: 6px 8px;
     border-radius: 4px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-muted);
     cursor: pointer;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .clear-btn:hover { color: var(--text); border-color: var(--text-muted); }
-
-  /* Barcode type buttons */
-  .btype-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-  .btype-btn {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 12px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
-    line-height: 1.6;
-  }
-  .btype-btn:hover { border-color: var(--text-muted); color: var(--text); }
-  .btype-btn.selected {
-    border-color: var(--green);
-    background: var(--green-dim);
-    color: var(--green);
-    box-shadow: 0 0 0 3px var(--green-glow);
+    min-height: 32px;
+    touch-action: manipulation;
   }
 
-  /* Barcode value input */
-  #input-barcode {
-    font-size: 16px;
-    letter-spacing: 0.04em;
-    padding-right: 56px;
-  }
-
-  /* Save feedback */
-  #scan-feedback {
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-top: 14px;
-    font-family: var(--mono);
-    font-size: 13px;
+  /* NDC check box */
+  #ndc-check-box {
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    font-size: 14px;
     display: none;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
+    line-height: 1.5;
   }
-  #scan-feedback.success { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
-  #scan-feedback.error   { display: flex; background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red);   }
-  #scan-feedback.warn    { display: flex; background: var(--amber-dim); border: 1px solid var(--amber); color: var(--amber); }
+  #ndc-check-box.checking { display: flex; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); }
+  #ndc-check-box.found    { display: flex; background: var(--amber-dim); border: 1px solid var(--amber); color: var(--amber); }
+  #ndc-check-box.clear    { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
-  /* Right column */
-  .counter-big {
+  #ndc-format-warn, #ndc-required-warn {
+    font-size: 12px;
     font-family: var(--mono);
-    font-size: 52px;
-    font-weight: 600;
-    color: var(--green);
-    line-height: 1;
-    margin: 12px 0 4px;
+    margin-top: 5px;
+    display: none;
   }
-  .counter-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
-  .scan-meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); line-height: 1.9; }
-  .scan-meta .val { color: var(--text); }
-  hr.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  #ndc-format-warn.visible { display: block; color: var(--amber); }
+  #ndc-required-warn.visible { display: block; color: var(--red); }
 
-  #next-item-btn { display: none; margin-top: 14px; }
-  #next-item-btn.visible { display: flex; }
-
-  /* ── Characteristics card ── */
+  /* ── Characteristics ── */
   #char-card { display: none; }
   #char-card.visible { display: block; }
 
-  .char-state-loading .char-body { display: none; }
-  .char-state-loaded  .char-body-loading { display: none; }
-  .char-state-loaded  .char-body-notfound { display: none; }
-  .char-state-loaded  .char-body-edit { display: none; }
-  .char-state-notfound .char-body-loading { display: none; }
-  .char-state-notfound .char-body-loaded { display: none; }
-  .char-state-notfound .char-body-edit { display: none; }
-  .char-state-edit .char-body-loading { display: none; }
-  .char-state-edit .char-body-loaded { display: none; }
-  .char-state-edit .char-body-notfound { display: none; }
-  .char-state-confirmed .char-body-loading { display: none; }
-  .char-state-confirmed .char-body-loaded { display: none; }
-  .char-state-confirmed .char-body-notfound { display: none; }
-  .char-state-confirmed .char-body-edit { display: none; }
-  .char-state-unconfirmed .char-body-loading { display: none; }
-  .char-state-unconfirmed .char-body-loaded { display: none; }
-  .char-state-unconfirmed .char-body-notfound { display: none; }
-  .char-state-unconfirmed .char-body-edit { display: none; }
-
-  .uom-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .uom-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 12px;
-  }
-  .uom-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-  .uom-val {
-    font-family: var(--mono);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-  }
+  .uom-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  .uom-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 10px; }
+  .uom-label { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+  .uom-val { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text); }
   .uom-val.empty { color: var(--text-dim); font-style: italic; font-size: 12px; }
 
-  .char-action-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-  }
+  .char-action-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .char-action-row .btn { width: 100%; font-size: 14px; }
 
   .char-confirmed-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--green-dim);
-    border: 1px solid var(--green);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--green);
-  }
-  .char-unconfirmed-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--amber-dim);
-    border: 1px solid var(--amber);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--amber);
-  }
-  .char-notfound-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  .mini-list { margin-top: 16px; }
-  .mini-item {
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-light);
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 8px;
-    align-items: baseline;
-  }
-  .mini-item:last-child { border-bottom: none; }
-  .mini-item .ndc-val { color: var(--blue); }
-  .mini-item .bc { color: var(--text); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* ── Records ── */
-  .metrics-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
-  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
-  .metric-val { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--green); }
-  .metric-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
-
-  .records-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  .records-toolbar input { flex: 1; min-width: 200px; }
-
-  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
-  thead th {
-    text-align: left; padding: 10px 12px;
-    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-muted); border-bottom: 1px solid var(--border);
-    cursor: pointer; white-space: nowrap; user-select: none;
-  }
-  thead th:hover { color: var(--text); }
-  tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
-  tbody tr:hover { background: var(--surface2); }
-  tbody td { padding: 9px 12px; color: var(--text-muted); }
-  tbody td.mono-val { color: var(--text); }
-  tbody td.ndc-val { color: var(--blue); }
-  .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; overflow-x: auto; }
-  .empty-row td { text-align: center; padding: 40px; color: var(--text-dim); }
-
-  /* ── Instructions panel ── */
-  #instructions-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    transition: all 0.2s;
-  }
-  #instructions-panel.hidden { display: none; }
-  .instructions-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .instructions-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-  .inst-step {
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    padding: 12px 14px;
-  }
-  .inst-step-num {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--green);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .inst-step-title {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 5px;
-  }
-  .inst-step-body {
-    font-size: 12px;
-    color: var(--text-muted);
-    line-height: 1.55;
-  }
-  .inst-step-body strong { color: var(--text); font-weight: 600; }
-  .inst-note {
-    margin-top: 12px;
-    padding: 10px 14px;
-    background: var(--blue-dim);
-    border: 1px solid var(--blue);
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--blue);
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--green-dim); border: 1px solid var(--green);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--green);
     line-height: 1.5;
   }
+  .char-unconfirmed-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--amber-dim); border: 1px solid var(--amber);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--amber);
+  }
+  .char-notfound-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--text-muted);
+    margin-bottom: 12px;
+  }
 
-  /* ── Notes field ── */
+  /* Flag toggle buttons */
+  .flag-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; margin-top: 4px; }
+  .flag-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .flag-box.flag-yes { border-color: var(--red); background: var(--red-dim); }
+  .flag-box.flag-no  { border-color: var(--green); background: var(--green-dim); }
+  .yn-group { display: flex; gap: 8px; margin-top: 8px; }
+  .yn-btn {
+    flex: 1;
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 10px 8px; min-height: var(--tap);
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-muted);
+    cursor: pointer; touch-action: manipulation;
+  }
+  .yn-btn.yn-yes.active { border-color: var(--red); background: var(--red-dim); color: var(--red); }
+  .yn-btn.yn-no.active  { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+
+  /* Barcode type buttons */
+  .btype-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .btype-btn {
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 16px 10px; min-height: 64px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-muted);
+    cursor: pointer; touch-action: manipulation;
+    text-align: center; line-height: 1.5;
+  }
+  .btype-btn.selected {
+    border-color: var(--green); background: var(--green-dim);
+    color: var(--green); box-shadow: 0 0 0 3px var(--green-glow);
+  }
+
+  /* Barcode input */
+  #input-barcode { font-size: 16px; letter-spacing: 0.04em; padding-right: 60px; }
+  #input-barcode:disabled { opacity: 0.35; }
+
+  /* Scan feedback */
+  #scan-feedback {
+    border-radius: 8px; padding: 14px 16px; margin-top: 12px;
+    font-family: var(--mono); font-size: 14px;
+    display: none; align-items: flex-start; gap: 10px; line-height: 1.4;
+  }
+  #scan-feedback.success { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  #scan-feedback.error   { display: flex; background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red); }
+  #scan-feedback.warn    { display: flex; background: var(--amber-dim); border: 1px solid var(--amber); color: var(--amber); }
+
+  /* GTIN display */
+  #gtin-display {
+    display: none; margin-top: 10px; padding: 12px 14px;
+    background: var(--blue-dim); border: 1px solid var(--blue);
+    border-radius: 8px; font-family: var(--mono);
+    font-size: 13px; color: var(--blue); line-height: 1.6;
+  }
+
+  /* Notes */
   textarea#input-notes {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 10px 14px;
-    outline: none;
-    resize: vertical;
-    min-height: 70px;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: var(--mono); font-size: 15px;
+    padding: 12px 14px; outline: none;
+    resize: vertical; min-height: 70px;
+    -webkit-appearance: none;
   }
-  textarea#input-notes:focus {
-    border-color: var(--green);
-    box-shadow: 0 0 0 3px var(--green-glow);
-  }
+  textarea#input-notes:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); }
   textarea#input-notes::placeholder { color: var(--text-dim); }
+
+  /* Session counter */
+  .counter-big { font-family: var(--mono); font-size: 48px; font-weight: 600; color: var(--green); line-height: 1; margin: 8px 0 2px; }
+  .counter-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .scan-meta { font-family: var(--mono); font-size: 13px; color: var(--text-muted); line-height: 2; }
+  .scan-meta .val { color: var(--text); }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  #next-item-btn { display: none; margin-top: 12px; font-size: 17px; padding: 18px; }
+  #next-item-btn.visible { display: flex; }
+
+  /* Mini list */
+  .mini-list { margin-top: 12px; }
+  .mini-item {
+    padding: 10px 0; border-bottom: 1px solid var(--border-light);
+    font-family: var(--mono); font-size: 12px; color: var(--text-muted);
+    display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline;
+  }
+  .mini-item:last-child { border-bottom: none; }
+  .mini-item .ndc-val { color: var(--blue); font-size: 11px; }
+  .mini-item .bc { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Records screen ── */
+  .metrics-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .metric-val { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--green); }
+  .metric-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+  .records-toolbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .records-toolbar input { font-size: 16px; }
+  .records-toolbar-btns { display: flex; gap: 8px; }
+  .records-toolbar-btns .btn { flex: 1; }
+
+  /* Records table — simplified for mobile, key columns only */
+  .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .record-card {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 13px;
+  }
+  .record-card:last-child { border-bottom: none; }
+  .record-card:active { background: var(--surface2); }
+  .rc-ndc { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--blue); margin-bottom: 4px; }
+  .rc-barcode { font-family: var(--mono); font-size: 12px; color: var(--text); margin-bottom: 3px; }
+  .rc-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+  .rc-flags { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .rc-flag {
+    font-family: var(--mono); font-size: 10px; padding: 2px 7px;
+    border-radius: 10px; border: 1px solid;
+  }
+  .rc-flag-temp { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+  .rc-flag-haz  { border-color: var(--red);  color: var(--red);  background: var(--red-dim); }
+  .rc-flag-ok   { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+
+  /* Theme + user buttons in header */
+  #theme-toggle-btn, #change-user-btn {
+    font-family: var(--mono); font-size: 11px;
+    padding: 6px 10px; border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; min-height: 34px; touch-action: manipulation;
+  }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header>
-  <div class="header-left">
-    <div class="logo">Rx<span> // </span>Scanner</div>
-    <span id="conn-pill" class="pill pill-green">● ONLINE</span>
-  </div>
+  <div class="logo">Rx<span> // </span>HC50 <span id="conn-pill" class="pill pill-green" style="margin-left:6px">● ON</span></div>
   <div class="header-right">
-    <div class="user-badge" id="user-badge" style="display:none">
-      Scanning as <strong id="user-badge-name"></strong>
-    </div>
-    <button class="btn btn-ghost btn-sm" id="change-user-btn" style="display:none" onclick="goSetup()">Change User</button>
-    <button class="btn btn-ghost btn-sm" id="toggle-help-btn" style="display:none" onclick="toggleInstructions()">? Hide Guide</button>
+    <button id="theme-toggle-btn" onclick="toggleTheme()">☀</button>
+    <button id="change-user-btn" style="display:none" onclick="goSetup()">👤</button>
   </div>
 </header>
 
 <!-- SYNC BANNER -->
 <div id="sync-banner">
-  <div class="sync-msg">
-    ⚠ <strong id="pending-count">0</strong> scan(s) pending sync —
+  <div class="sync-msg">⚠ <strong id="pending-count">0</strong> scan(s) pending —
     <button class="btn btn-amber btn-sm" onclick="syncPending()">Sync Now</button>
   </div>
 </div>
 
 <!-- NAV -->
-<nav id="main-nav" style="display:none">
+<nav id="main-nav">
   <button class="tab-btn active" data-tab="scan" onclick="switchTab('scan')">⬡ Scan</button>
   <button class="tab-btn" data-tab="records" onclick="switchTab('records')">≡ Records</button>
 </nav>
@@ -618,11 +481,11 @@
   <!-- SETUP SCREEN -->
   <div id="screen-setup" class="screen active">
     <div class="setup-card">
-      <div class="setup-title">// Inventory Scanner</div>
-      <div class="setup-sub">Enter your name to begin. It will be saved for future sessions.</div>
+      <div class="setup-title">// Rx Scanner</div>
+      <div class="setup-sub">Enter your name to begin scanning.</div>
       <div class="field">
         <label for="input-name">Your Name</label>
-        <input type="text" id="input-name" placeholder="First Last" autocomplete="off" />
+        <input type="text" id="input-name" placeholder="First Last" autocomplete="off" inputmode="text" />
       </div>
       <button class="btn btn-primary btn-full" onclick="startSession()">Start Scanning →</button>
     </div>
@@ -631,285 +494,199 @@
   <!-- SCAN SCREEN -->
   <div id="screen-scan" class="screen">
 
-    <!-- Instructions panel -->
-    <div id="instructions-panel">
-      <div class="instructions-title">📋 How to use this app</div>
-      <div class="instructions-grid">
-        <div class="inst-step">
-          <div class="inst-step-num">Step 1</div>
-          <div class="inst-step-title">Enter NDC-11</div>
-          <div class="inst-step-body">Scan or type the <strong>11-digit NDC</strong> from the <strong>purchasing (outer) UOM</strong>. The app will check if this item has been scanned before and look up its characteristics from the master database.</div>
+    <!-- NDC -->
+    <div class="card">
+      <div class="card-title">💊 NDC-11 <span style="color:var(--red);font-size:10px;margin-left:4px">REQUIRED</span></div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">NDC from the <strong style="color:var(--text)">purchasing UOM</strong>.</div>
+      <div class="field" style="margin-bottom:0">
+        <div class="input-wrap">
+          <input type="text" id="input-ndc"
+            placeholder="Scan or type NDC-11…"
+            autocomplete="off" inputmode="numeric"
+            oninput="onNdcInput()" onkeydown="onNdcKey(event)" maxlength="14" />
+          <button class="clear-btn" onclick="clearNDC()">Clear</button>
         </div>
-        <div class="inst-step">
-          <div class="inst-step-num">Step 2</div>
-          <div class="inst-step-title">Confirm Characteristics</div>
-          <div class="inst-step-body">Review the <strong>UOM1, UOM2, and UOM3</strong> values pulled from the master. Click <strong>✓ Correct</strong> if they match the item in hand. If wrong, click <strong>✎ Incorrect — Edit</strong> to enter the right values. If you can't tell, click <strong>⚠ Unable to Confirm</strong>.</div>
-        </div>
-        <div class="inst-step">
-          <div class="inst-step-num">Step 3</div>
-          <div class="inst-step-title">Scan Barcodes</div>
-          <div class="inst-step-body">Select <strong>Purchasing</strong> for the outer/case barcode or <strong>UOM1 (if different)</strong> for the inner/each barcode. Scan with the connected reader or type manually, then press <strong>Enter</strong>. <strong>Scan all barcodes present</strong> — if an item has both a UPC and a DataMatrix (or any other combination), scan each one separately before moving on. Add a note if needed, then click <strong>→ Next Item</strong> when done.</div>
-        </div>
+        <div id="ndc-format-warn">⚠ Looks like NDC-10 — use NDC-11</div>
+        <div id="ndc-required-warn">NDC-11 required before scanning</div>
       </div>
-      <div class="inst-note">
-        💡 <strong>Tip:</strong> If the NDC on the purchasing UOM and the inner UOM (UOM1) are the same, you can scan all barcodes under <strong>Purchasing</strong> — there is no need to use the UOM1 button in that case.
+      <div id="ndc-check-box">
+        <span id="ndc-check-icon" class="pulse">◌</span>
+        <span id="ndc-check-msg"></span>
       </div>
     </div>
 
-    <div class="scan-layout">
+    <!-- Characteristics -->
+    <div class="card" id="char-card">
+      <div class="card-title">✨ Characteristics</div>
 
-      <!-- LEFT: inputs -->
-      <div>
-
-        <!-- NDC (required) -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-title">💊 NDC-11 <span style="color:var(--red);font-size:10px;margin-left:4px">REQUIRED</span></div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">This should be the NDC on the <strong style="color:var(--text)">purchasing UOM</strong>.</div>
-          <div class="field" style="margin-bottom:0">
-            <div class="input-wrap">
-              <input type="text" id="input-ndc"
-                placeholder="Scan or type NDC-11…"
-                autocomplete="off"
-                oninput="onNdcInput()"
-                onkeydown="onNdcKey(event)"
-                maxlength="14" />
-              <button class="clear-btn" onclick="clearNDC()">Clear</button>
-            </div>
-            <div id="ndc-format-warn">⚠ Looks like NDC-10 — use NDC-11 format</div>
-            <div id="ndc-required-warn">NDC-11 is required before scanning a barcode</div>
-          </div>
-          <div id="ndc-check-box">
-            <span id="ndc-check-icon" class="pulse">◌</span>
-            <span id="ndc-check-msg"></span>
-          </div>
-        </div>
-
-        <!-- E# (optional) — HIDDEN, preserved for future use
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-title">E# <span style="color:var(--text-dim);font-size:10px;margin-left:4px">OPTIONAL</span></div>
-          <div class="input-wrap">
-            <input type="text" id="input-enum" placeholder="E12345" autocomplete="off" />
-            <button class="clear-btn" onclick="document.getElementById('input-enum').value=''">Clear</button>
-          </div>
-        </div>
-        -->
-        <!-- Hidden E# input kept for data model compatibility -->
-        <input type="hidden" id="input-enum" value="" />
-
-        <!-- Characteristics -->
-        <div class="card" id="char-card" style="margin-bottom:16px">
-          <div class="card-title">
-            ◈ Characteristics
-            <span id="char-status-pill" style="display:none"></span>
-          </div>
-
-          <!-- Loading -->
-          <div class="char-body char-body-loading">
-            <div style="font-family:var(--mono);font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px">
-              <span class="pulse">◌</span> Looking up NDC in master…
-            </div>
-          </div>
-
-          <!-- Loaded: show UOMs for confirmation -->
-          <div class="char-body char-body-loaded">
-            <div class="uom-grid">
-              <div class="uom-box">
-                <div class="uom-label">UOM1</div>
-                <div class="uom-val" id="char-uom1-display">—</div>
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM2</div>
-                <div class="uom-val" id="char-uom2-display">—</div>
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM3</div>
-                <div class="uom-val" id="char-uom3-display">—</div>
-              </div>
-            </div>
-            <div class="char-action-row">
-              <button class="btn btn-primary btn-sm" onclick="confirmCharacteristics()">✓ Correct</button>
-              <button class="btn btn-ghost btn-sm" onclick="enterEditMode()">✎ Incorrect — Edit</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
-            </div>
-          </div>
-
-          <!-- Not found in master -->
-          <div class="char-body char-body-notfound">
-            <div class="char-notfound-banner" style="margin-bottom:12px">
-              ○ NDC not found in master — enter UOMs manually
-            </div>
-            <div class="uom-grid" style="margin-bottom:12px">
-              <div class="uom-box">
-                <div class="uom-label">UOM1</div>
-                <div class="uom-val empty">n/a</div>
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM2</div>
-                <input type="text" id="char-uom2-manual" placeholder="e.g. 10" autocomplete="off" style="margin-top:4px" />
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM3</div>
-                <input type="text" id="char-uom3-manual" placeholder="e.g. 6" autocomplete="off" style="margin-top:4px" />
-              </div>
-            </div>
-            <div class="char-action-row">
-              <button class="btn btn-primary btn-sm" onclick="saveManualUOMs()">✓ Save UOMs</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
-            </div>
-          </div>
-
-          <!-- Edit mode: master values wrong -->
-          <div class="char-body char-body-edit">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:10px">
-              Enter corrected values — UOM1 is read-only from master
-            </div>
-            <div class="uom-grid" style="margin-bottom:12px">
-              <div class="uom-box">
-                <div class="uom-label">UOM1</div>
-                <div class="uom-val" id="char-uom1-edit-display">—</div>
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM2 <span style="color:var(--text-dim)">edit</span></div>
-                <input type="text" id="char-uom2-edit" placeholder="Enter UOM2" autocomplete="off" style="margin-top:4px" />
-              </div>
-              <div class="uom-box">
-                <div class="uom-label">UOM3 <span style="color:var(--text-dim)">edit</span></div>
-                <input type="text" id="char-uom3-edit" placeholder="Enter UOM3" autocomplete="off" style="margin-top:4px" />
-              </div>
-            </div>
-            <div class="char-action-row">
-              <button class="btn btn-primary btn-sm" onclick="saveEditedUOMs()">✓ Save Corrections</button>
-              <button class="btn btn-ghost btn-sm" onclick="cancelEdit()">✕ Cancel</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
-            </div>
-          </div>
-
-          <!-- Confirmed state -->
-          <div class="char-body char-body-confirmed" style="display:none">
-            <div class="char-confirmed-banner">
-              <span>✓</span>
-              <span id="char-confirmed-summary"></span>
-              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Edit</button>
-            </div>
-          </div>
-
-          <!-- Unconfirmed state -->
-          <div class="char-body char-body-unconfirmed" style="display:none">
-            <div class="char-unconfirmed-banner">
-              <span>⚠</span>
-              <span>Marked as unable to confirm — UOMs not recorded</span>
-              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Retry</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Barcode -->
-        <div class="card">
-          <div class="card-title">⬡ Barcode</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">
-            If there is no inner NDC (i.e., the NDC is the same on the purchasing UOM and UOM1), you can scan everything under <strong style="color:var(--text)">Purchasing</strong>.
-          </div>
-          <div class="btype-grid" style="grid-template-columns:1fr 1fr">
-            <button class="btype-btn" id="btype-outer" onclick="selectBarcodeType('outer')">
-              Purchasing<br><span style="font-size:9px;opacity:0.7">OUTER / CASE</span>
-            </button>
-            <button class="btype-btn" id="btype-inner" onclick="selectBarcodeType('inner')">
-              UOM1 (if different)<br><span style="font-size:9px;opacity:0.7">INNER / EACH</span>
-            </button>
-          </div>
-          <!-- Other barcode type — HIDDEN, preserved for future use
-          <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">
-            Other<br><span style="font-size:9px;opacity:0.7">BARCODE TYPE</span>
-          </button>
-          -->
-          <div class="input-wrap">
-            <input type="text" id="input-barcode"
-              placeholder="Select type above, then scan…"
-              disabled autocomplete="off"
-              onkeydown="onBarcodeKey(event)" />
-            <button class="clear-btn" onclick="clearBarcode()">Clear</button>
-          </div>
-          <div id="scan-feedback"></div>
-          <div id="gtin-display" style="display:none;margin-top:10px;padding:10px 14px;background:var(--blue-dim);border:1px solid var(--blue);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--blue);line-height:1.6"></div>
-          <!-- Notes -->
-          <div style="margin-top:14px">
-            <label for="input-notes" style="margin-bottom:6px">Notes <span style="color:var(--text-dim);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">optional</span></label>
-            <textarea id="input-notes" placeholder="Any comments about this item or scan…"></textarea>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- RIGHT: stats + recent -->
-      <div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-title">Session</div>
-          <div class="counter-big" id="session-count">0</div>
-          <div class="counter-label">Scans This Session</div>
-          <hr class="divider">
-          <div class="scan-meta">
-            <div>NDC: <span class="val" id="stat-ndc">—</span></div>
-            <div>Last scan: <span class="val" id="stat-last">—</span></div>
-          </div>
-          <button class="btn btn-amber btn-full" id="next-item-btn" onclick="nextItem()" style="font-size:15px;padding:14px 20px;margin-top:8px">
-            → Next Item
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Recent Scans</div>
-          <div class="mini-list" id="mini-list">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 0">
-              No scans yet this session.
-            </div>
-          </div>
+      <div class="char-body char-body-loading">
+        <div style="font-family:var(--mono);font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+          <span class="pulse">◌</span> Looking up NDC in master…
         </div>
       </div>
 
-    </div><!-- end scan-layout -->
+      <div class="char-body char-body-loaded">
+        <div class="uom-grid">
+          <div class="uom-box"><div class="uom-label">UOM1</div><div class="uom-val" id="char-uom1-display">—</div></div>
+          <div class="uom-box"><div class="uom-label">UOM2</div><div class="uom-val" id="char-uom2-display">—</div></div>
+          <div class="uom-box"><div class="uom-label">UOM3</div><div class="uom-val" id="char-uom3-display">—</div></div>
+        </div>
+        <div class="flag-row" id="flags-loaded">
+          <div class="flag-box" id="flag-temp-box">
+            <div class="uom-label">🌡 Temp Controlled?</div>
+            <div class="yn-group">
+              <button class="yn-btn yn-yes" id="flag-temp-yes" onclick="setFlag('isTempControl', true)">Yes</button>
+              <button class="yn-btn yn-no"  id="flag-temp-no"  onclick="setFlag('isTempControl', false)">No</button>
+            </div>
+          </div>
+          <div class="flag-box" id="flag-hazmat-box">
+            <div class="uom-label">☣ Hazardous?</div>
+            <div class="yn-group">
+              <button class="yn-btn yn-yes" id="flag-hazmat-yes" onclick="setFlag('isHazmat', true)">Yes</button>
+              <button class="yn-btn yn-no"  id="flag-hazmat-no"  onclick="setFlag('isHazmat', false)">No</button>
+            </div>
+          </div>
+        </div>
+        <div class="char-action-row">
+          <button class="btn btn-primary" onclick="confirmCharacteristics()">✓ Correct</button>
+          <button class="btn btn-ghost" onclick="enterEditMode()">✎ Incorrect — Edit</button>
+          <button class="btn btn-ghost" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+        </div>
+      </div>
+
+      <div class="char-body char-body-notfound">
+        <div class="char-notfound-banner">○ NDC not found in master — enter UOMs manually</div>
+        <div class="uom-grid" style="margin-bottom:12px">
+          <div class="uom-box"><div class="uom-label">UOM1</div><div class="uom-val empty">n/a</div></div>
+          <div class="uom-box"><div class="uom-label">UOM2</div><input type="text" id="char-uom2-manual" placeholder="e.g. 10" autocomplete="off" inputmode="numeric" style="margin-top:4px" /></div>
+          <div class="uom-box"><div class="uom-label">UOM3</div><input type="text" id="char-uom3-manual" placeholder="e.g. 6"  autocomplete="off" inputmode="numeric" style="margin-top:4px" /></div>
+        </div>
+        <div class="flag-row">
+          <div class="flag-box" id="flag-temp-box-nf">
+            <div class="uom-label">🌡 Temp Controlled?</div>
+            <div class="yn-group">
+              <button class="yn-btn yn-yes" id="flag-temp-yes-nf" onclick="setFlag('isTempControl', true)">Yes</button>
+              <button class="yn-btn yn-no"  id="flag-temp-no-nf"  onclick="setFlag('isTempControl', false)">No</button>
+            </div>
+          </div>
+          <div class="flag-box" id="flag-hazmat-box-nf">
+            <div class="uom-label">☣ Hazardous?</div>
+            <div class="yn-group">
+              <button class="yn-btn yn-yes" id="flag-hazmat-yes-nf" onclick="setFlag('isHazmat', true)">Yes</button>
+              <button class="yn-btn yn-no"  id="flag-hazmat-no-nf"  onclick="setFlag('isHazmat', false)">No</button>
+            </div>
+          </div>
+        </div>
+        <div class="char-action-row">
+          <button class="btn btn-primary" onclick="saveManualUOMs()">✓ Save UOMs</button>
+          <button class="btn btn-ghost" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+        </div>
+      </div>
+
+      <div class="char-body char-body-edit">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text-muted);margin-bottom:10px">UOM1 is read-only from master</div>
+        <div class="uom-grid" style="margin-bottom:12px">
+          <div class="uom-box"><div class="uom-label">UOM1</div><div class="uom-val" id="char-uom1-edit-display">—</div></div>
+          <div class="uom-box"><div class="uom-label">UOM2 <span style="color:var(--text-dim)">edit</span></div><input type="text" id="char-uom2-edit" placeholder="UOM2" autocomplete="off" style="margin-top:4px" /></div>
+          <div class="uom-box"><div class="uom-label">UOM3 <span style="color:var(--text-dim)">edit</span></div><input type="text" id="char-uom3-edit" placeholder="UOM3" autocomplete="off" style="margin-top:4px" /></div>
+        </div>
+        <div class="char-action-row">
+          <button class="btn btn-primary" onclick="saveEditedUOMs()">✓ Save Corrections</button>
+          <button class="btn btn-ghost" onclick="cancelEdit()">✕ Cancel</button>
+          <button class="btn btn-ghost" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+        </div>
+      </div>
+
+      <div class="char-body char-body-confirmed" style="display:none">
+        <div class="char-confirmed-banner">
+          <span>✓</span>
+          <span id="char-confirmed-summary" style="flex:1"></span>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;margin-left:4px" onclick="reopenCharacteristics()">Edit</button>
+        </div>
+      </div>
+
+      <div class="char-body char-body-unconfirmed" style="display:none">
+        <div class="char-unconfirmed-banner">
+          <span>⚠</span>
+          <span style="flex:1">Marked as unable to confirm</span>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="reopenCharacteristics()">Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barcode -->
+    <div class="card">
+      <div class="card-title">⬡ Barcode</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.4">
+        Same NDC on both UOMs? Scan everything under <strong style="color:var(--text)">Purchasing</strong>.
+      </div>
+      <div class="btype-grid">
+        <button class="btype-btn" id="btype-outer" onclick="selectBarcodeType('outer')">
+          Purchasing<br><span style="font-size:10px;opacity:0.7">OUTER / CASE</span>
+        </button>
+        <button class="btype-btn" id="btype-inner" onclick="selectBarcodeType('inner')">
+          UOM1 (if diff)<br><span style="font-size:10px;opacity:0.7">INNER / EACH</span>
+        </button>
+      </div>
+      <!-- Other barcode type — hidden, preserved for future use
+      <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">Other</button>
+      -->
+      <div class="input-wrap">
+        <input type="text" id="input-barcode"
+          placeholder="Select type above, then scan…"
+          disabled autocomplete="off"
+          onkeydown="onBarcodeKey(event)" />
+        <button class="clear-btn" onclick="clearBarcode()">Clear</button>
+      </div>
+      <div id="scan-feedback"></div>
+      <div id="gtin-display"></div>
+      <div style="margin-top:14px">
+        <label for="input-notes">Notes <span style="color:var(--text-dim);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">optional</span></label>
+        <textarea id="input-notes" placeholder="Any comments about this item or scan…"></textarea>
+      </div>
+    </div>
+
+    <!-- Session -->
+    <div class="card">
+      <div class="card-title">Session</div>
+      <div class="counter-big" id="session-count">0</div>
+      <div class="counter-label">Scans This Session</div>
+      <hr class="divider">
+      <div class="scan-meta">
+        <div>NDC: <span class="val" id="stat-ndc">—</span></div>
+        <div>Last scan: <span class="val" id="stat-last">—</span></div>
+      </div>
+      <button class="btn btn-amber btn-full" id="next-item-btn" onclick="nextItem()">
+        → Next Item
+      </button>
+    </div>
+
+    <!-- Recent scans -->
+    <div class="card">
+      <div class="card-title">Recent Scans</div>
+      <div class="mini-list" id="mini-list">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:8px 0">No scans yet this session.</div>
+      </div>
+    </div>
+
   </div><!-- end screen-scan -->
 
   <!-- RECORDS SCREEN -->
   <div id="screen-records" class="screen">
     <div class="metrics-row">
-      <div class="metric-card">
-        <div class="metric-val" id="metric-total">0</div>
-        <div class="metric-label">Total Scans</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-val" id="metric-ndcs">0</div>
-        <div class="metric-label">Unique NDCs</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-val" id="metric-session">0</div>
-        <div class="metric-label">This Session</div>
-      </div>
+      <div class="metric-card"><div class="metric-val" id="metric-total">0</div><div class="metric-label">Total</div></div>
+      <div class="metric-card"><div class="metric-val" id="metric-ndcs">0</div><div class="metric-label">NDCs</div></div>
+      <div class="metric-card"><div class="metric-val" id="metric-session">0</div><div class="metric-label">Session</div></div>
     </div>
-
     <div class="records-toolbar">
-      <input type="text" id="filter-input" placeholder="Filter by NDC, barcode, E#, name…" oninput="renderRecordsTable()" />
-      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
-      <button class="btn btn-ghost btn-sm" onclick="loadRecords()">↻ Refresh</button>
+      <input type="text" id="filter-input" placeholder="Filter by NDC, barcode, name…" oninput="renderRecordsTable()" />
+      <div class="records-toolbar-btns">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadRecords()">↻ Refresh</button>
+      </div>
     </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th onclick="sortBy('timestamp')">Time</th>
-            <th onclick="sortBy('ndc')">NDC-11</th>
-            <th onclick="sortBy('barcode_type')">Type</th>
-            <th onclick="sortBy('barcode_value')">Barcode</th>
-            <th onclick="sortBy('gtin')">GTIN</th>
-            <th onclick="sortBy('symbology')">Symbology</th>
-            <th onclick="sortBy('scanned_by')">Scanned By</th>
-            <th onclick="sortBy('notes')">Notes</th>
-          </tr>
-        </thead>
-        <tbody id="records-tbody">
-          <tr class="empty-row"><td colspan="6">Loading records…</td></tr>
-        </tbody>
-      </table>
+    <div class="tbl-wrap" id="records-list">
+      <div class="empty-state">Loading records…</div>
     </div>
   </div>
 
@@ -943,8 +720,17 @@ let uomState = {
   uom1: null,
   uom2: null,
   uom3: null,
-  source: null       // 'master' | 'corrected' | 'manual' | 'unconfirmed'
+  isTempControl: null,   // true | false | null (unknown)
+  isHazmat: null,        // true | false | null (unknown)
+  source: null           // 'master' | 'corrected' | 'manual' | 'unconfirmed'
 };
+
+// ── Theme toggle ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('rxscanner_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+}
 
 // ── Instructions toggle ──
 function toggleInstructions() {
@@ -959,6 +745,12 @@ function toggleInstructions() {
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('rxscanner_name');
   if (saved) document.getElementById('input-name').value = saved;
+  // Restore theme preference
+  if (localStorage.getItem('rxscanner_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    const tb = document.getElementById('theme-toggle-btn');
+    if (tb) tb.textContent = '🌙 Dark';
+  }
   // Restore instructions preference
   if (localStorage.getItem('rxscanner_hide_instructions') === '1') {
     document.getElementById('instructions-panel').classList.add('hidden');
@@ -1383,7 +1175,7 @@ function setCharState(state) {
 }
 
 function resetCharacteristics() {
-  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, source: null };
+  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, isTempControl: null, isHazmat: null, source: null };
   const card = document.getElementById('char-card');
   card.classList.remove('visible');
   // hide all bodies
@@ -1419,6 +1211,9 @@ async function lookupCharacteristics(ndcValue) {
       uomState.uom1 = row.uom1 || null;
       uomState.uom2 = row.uom2 || null;
       uomState.uom3 = row.uom3 || null;
+      // Read flags — stored as boolean in ndc_master; null = not set
+      uomState.isTempControl = row.is_temperature_control != null ? Boolean(row.is_temperature_control) : null;
+      uomState.isHazmat      = row.is_hazmat != null ? Boolean(row.is_hazmat) : null;
 
       // Populate display boxes
       const fmt = v => v || '<span class="empty">—</span>';
@@ -1426,6 +1221,9 @@ async function lookupCharacteristics(ndcValue) {
       document.getElementById('char-uom2-display').innerHTML = fmt(uomState.uom2);
       document.getElementById('char-uom3-display').innerHTML = fmt(uomState.uom3);
       document.getElementById('char-uom1-edit-display').textContent = uomState.uom1 || '—';
+
+      // Pre-populate flag buttons from master data
+      populateFlagButtons();
 
       setCharState('loaded');
     } else {
@@ -1479,6 +1277,10 @@ function showConfirmedBanner() {
   if (uomState.uom1) parts.push(`UOM1: ${uomState.uom1}`);
   if (uomState.uom2) parts.push(`UOM2: ${uomState.uom2}`);
   if (uomState.uom3) parts.push(`UOM3: ${uomState.uom3}`);
+  if (uomState.isTempControl === true)  parts.push('🌡 Temp Controlled');
+  if (uomState.isTempControl === false) parts.push('✓ Not Temp Controlled');
+  if (uomState.isHazmat === true)       parts.push('☣ Hazardous');
+  if (uomState.isHazmat === false)      parts.push('✓ Not Hazardous');
   const suffix = uomState.source === 'corrected' ? ' (corrected)'
                : uomState.source === 'manual'    ? ' (manual)'
                : '';
@@ -1510,6 +1312,31 @@ function reopenCharacteristics() {
   } else {
     setCharState('notfound');
   }
+}
+
+// ── Flag toggle helpers ──
+function setFlag(field, value) {
+  uomState[field] = value;
+  // Update all instances of buttons for this flag (loaded + notfound states)
+  const prefix = field === 'isTempControl' ? 'flag-temp' : 'flag-hazmat';
+  ['', '-nf'].forEach(suffix => {
+    const yesBtn = document.getElementById(prefix + '-yes' + suffix);
+    const noBtn  = document.getElementById(prefix + '-no'  + suffix);
+    const box    = document.getElementById(prefix + '-box' + suffix);
+    if (!yesBtn) return;
+    yesBtn.classList.toggle('active', value === true);
+    noBtn.classList.toggle('active',  value === false);
+    if (box) {
+      box.classList.toggle('flag-yes', value === true);
+      box.classList.toggle('flag-no',  value === false);
+      box.classList.toggle('flag-box', true);
+    }
+  });
+}
+
+function populateFlagButtons() {
+  if (uomState.isTempControl !== null) setFlag('isTempControl', uomState.isTempControl);
+  if (uomState.isHazmat !== null)      setFlag('isHazmat',      uomState.isHazmat);
 }
 
 // ── Barcode input ──
@@ -1556,8 +1383,10 @@ async function saveScan() {
     uom1:          uomState.uom1,
     uom2:          uomState.uom2,
     uom3:          uomState.uom3,
-    uom_confirmed: uomState.status === 'confirmed',
-    uom_source:    uomState.source || 'unconfirmed',
+    uom_confirmed:          uomState.status === 'confirmed',
+    uom_source:             uomState.source || 'unconfirmed',
+    is_temperature_control: uomState.isTempControl,
+    is_hazmat:              uomState.isHazmat,
     notes:         document.getElementById('input-notes').value.trim() || null,
     scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     timestamp:     now.toISOString()
@@ -1739,7 +1568,10 @@ function sortBy(col) {
   renderRecordsTable();
 }
 
-function renderRecordsTable() {
+function renderRecordsTable() { if (document.getElementById("records-list")) { renderRecordCards(); return; }
+  // fallback
+}
+function renderRecordsTable_unused() {
   const f = document.getElementById('filter-input').value.toLowerCase();
   let rows = allRecords.filter(r =>
     !f ||
@@ -1791,7 +1623,7 @@ function exportCSV() {
     (r.enum||'').toLowerCase().includes(f) ||
     (r.scanned_by||'').toLowerCase().includes(f)
   );
-  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source'];
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source','is_temperature_control','is_hazmat'];
   const csv = [cols.join(','), ...rows.map(r =>
     cols.map(c => JSON.stringify(r[c] || '')).join(',')
   )].join('\n');
@@ -1799,6 +1631,47 @@ function exportCSV() {
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   a.download = `rx-scans-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+</script>
+</body>
+</html>
+// ── Mobile card renderer for records ──
+function renderRecordCards() {
+  const f = document.getElementById('filter-input').value.toLowerCase();
+  let rows = allRecords.filter(r =>
+    !f ||
+    (r.ndc           || '').toLowerCase().includes(f) ||
+    (r.barcode_value || '').toLowerCase().includes(f) ||
+    (r.scanned_by    || '').toLowerCase().includes(f) ||
+    (r.notes         || '').toLowerCase().includes(f)
+  );
+  rows.sort((a, b) => {
+    const av = a[sortCol] || '', bv = b[sortCol] || '';
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+  const el = document.getElementById('records-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty-state">No records found.</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r => {
+    const dt = r.timestamp ? new Date(r.timestamp) : null;
+    const timeStr = dt
+      ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : (r.scanned_at || '');
+    const flags = [];
+    if (r.is_temperature_control) flags.push('<span class="rc-flag rc-flag-temp">🌡 Temp</span>');
+    if (r.is_hazmat)              flags.push('<span class="rc-flag rc-flag-haz">☣ Hazmat</span>');
+    if (r.gtin_valid)             flags.push('<span class="rc-flag rc-flag-ok">GTIN ✓</span>');
+    return `<div class="record-card">
+      <div class="rc-ndc">${r.ndc || '—'}</div>
+      <div class="rc-barcode">${r.barcode_type || ''}: ${r.barcode_value || ''}</div>
+      <div class="rc-meta">${timeStr} · ${r.scanned_by || ''}</div>
+      ${r.notes ? `<div class="rc-meta" style="margin-top:3px;color:var(--text-muted)">${r.notes}</div>` : ''}
+      ${flags.length ? `<div class="rc-flags">${flags.join('')}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 </script>
 </body>
