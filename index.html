@@ -1543,8 +1543,6 @@ async function saveScan() {
 
   const now = new Date();
   const record = {
-    pharmacy:      null,
-    location:      null,
     scanned_by:    userName,
     enum:          document.getElementById('input-enum').value.trim() || null,
     ndc:           ndcConfirmed,
