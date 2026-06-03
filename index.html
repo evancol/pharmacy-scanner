@@ -339,6 +339,7 @@
   }
   #scan-feedback.success { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
   #scan-feedback.error   { display: flex; background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red);   }
+  #scan-feedback.warn    { display: flex; background: var(--amber-dim); border: 1px solid var(--amber); color: var(--amber); }
 
   /* Right column */
   .counter-big {
@@ -1514,6 +1515,13 @@ async function saveScan() {
     timestamp:     now.toISOString()
   };
 
+  // Check for duplicate within current NDC session
+  const isDuplicate = sessionScans.some(s =>
+    s.ndc === record.ndc &&
+    s.barcode_value === record.barcode_value &&
+    s.barcode_type === record.barcode_type
+  );
+
   // Always persist locally
   const local = JSON.parse(localStorage.getItem('rxscanner_local') || '[]');
   local.push(record);
@@ -1533,7 +1541,11 @@ async function saveScan() {
       const gtinInfo = parsed.gtin
         ? ` · GTIN ${parsed.gtin}${parsed.upcValid ? ' (UPC-A ✓)' : parsed.gtinValid ? ' (valid)' : ' (check digit FAIL)'}`
         : '';
-      showFeedback(`✓ Saved — ${parsed.symbology} / ${parsed.cleanValue}${gtinInfo}`, true);
+      if (isDuplicate) {
+        showFeedback(`⚠ Duplicate — this barcode was already scanned for this NDC`, 'warn');
+      } else {
+        showFeedback(`✓ Saved — ${parsed.symbology} / ${parsed.cleanValue}${gtinInfo}`, true);
+      }
     } catch (err) {
       console.error('Save failed:', err);
       enqueuePending(record);
@@ -1585,9 +1597,9 @@ async function syncPending() {
 
 // ── Feedback ──
 let feedbackTimer;
-function showFeedback(msg, success) {
+function showFeedback(msg, state) {
   const el = document.getElementById('scan-feedback');
-  el.className = success ? 'success' : 'error';
+  el.className = state === true ? 'success' : state === 'warn' ? 'warn' : 'error';
   el.textContent = msg;
   clearTimeout(feedbackTimer);
   feedbackTimer = setTimeout(hideFeedback, 5000);
