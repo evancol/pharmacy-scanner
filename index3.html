@@ -1568,10 +1568,7 @@ function sortBy(col) {
   renderRecordsTable();
 }
 
-function renderRecordsTable() { if (document.getElementById("records-list")) { renderRecordCards(); return; }
-  // fallback
-}
-function renderRecordsTable_unused() {
+function renderRecordsTable() {
   const f = document.getElementById('filter-input').value.toLowerCase();
   let rows = allRecords.filter(r =>
     !f ||
@@ -1632,12 +1629,14 @@ function exportCSV() {
   a.download = `rx-scans-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
-</script>
-</body>
-</html>
+
 // ── Mobile card renderer for records ──
+function renderRecordsTable() {
+  renderRecordCards();
+}
+
 function renderRecordCards() {
-  const f = document.getElementById('filter-input').value.toLowerCase();
+  const f = (document.getElementById('filter-input').value || '').toLowerCase();
   let rows = allRecords.filter(r =>
     !f ||
     (r.ndc           || '').toLowerCase().includes(f) ||
@@ -1650,6 +1649,7 @@ function renderRecordCards() {
     return av < bv ? -sortDir : av > bv ? sortDir : 0;
   });
   const el = document.getElementById('records-list');
+  if (!el) return;
   if (!rows.length) {
     el.innerHTML = '<div class="empty-state">No records found.</div>';
     return;
@@ -1661,13 +1661,13 @@ function renderRecordCards() {
         dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : (r.scanned_at || '');
     const flags = [];
-    if (r.is_temperature_control) flags.push('<span class="rc-flag rc-flag-temp">🌡 Temp</span>');
-    if (r.is_hazmat)              flags.push('<span class="rc-flag rc-flag-haz">☣ Hazmat</span>');
-    if (r.gtin_valid)             flags.push('<span class="rc-flag rc-flag-ok">GTIN ✓</span>');
+    if (r.is_temperature_control) flags.push('<span class="rc-flag rc-flag-temp">\u{1F321} Temp</span>');
+    if (r.is_hazmat)              flags.push('<span class="rc-flag rc-flag-haz">\u2623 Hazmat</span>');
+    if (r.gtin_valid)             flags.push('<span class="rc-flag rc-flag-ok">GTIN \u2713</span>');
     return `<div class="record-card">
-      <div class="rc-ndc">${r.ndc || '—'}</div>
+      <div class="rc-ndc">${r.ndc || '\u2014'}</div>
       <div class="rc-barcode">${r.barcode_type || ''}: ${r.barcode_value || ''}</div>
-      <div class="rc-meta">${timeStr} · ${r.scanned_by || ''}</div>
+      <div class="rc-meta">${timeStr} \u00b7 ${r.scanned_by || ''}</div>
       ${r.notes ? `<div class="rc-meta" style="margin-top:3px;color:var(--text-muted)">${r.notes}</div>` : ''}
       ${flags.length ? `<div class="rc-flags">${flags.join('')}</div>` : ''}
     </div>`;
