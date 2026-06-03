@@ -492,6 +492,93 @@
   tbody td.ndc-val { color: var(--blue); }
   .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; overflow-x: auto; }
   .empty-row td { text-align: center; padding: 40px; color: var(--text-dim); }
+
+  /* ── Instructions panel ── */
+  #instructions-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    transition: all 0.2s;
+  }
+  #instructions-panel.hidden { display: none; }
+  .instructions-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .instructions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .inst-step {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .inst-step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .inst-step-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+  .inst-step-body {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .inst-step-body strong { color: var(--text); font-weight: 600; }
+  .inst-note {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--blue-dim);
+    border: 1px solid var(--blue);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--blue);
+    line-height: 1.5;
+  }
+
+  /* ── Notes field ── */
+  textarea#input-notes {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea#input-notes:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+  }
+  textarea#input-notes::placeholder { color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -507,6 +594,7 @@
       Scanning as <strong id="user-badge-name"></strong>
     </div>
     <button class="btn btn-ghost btn-sm" id="change-user-btn" style="display:none" onclick="goSetup()">Change User</button>
+    <button class="btn btn-ghost btn-sm" id="toggle-help-btn" style="display:none" onclick="toggleInstructions()">? Hide Guide</button>
   </div>
 </header>
 
@@ -541,6 +629,32 @@
 
   <!-- SCAN SCREEN -->
   <div id="screen-scan" class="screen">
+
+    <!-- Instructions panel -->
+    <div id="instructions-panel">
+      <div class="instructions-title">📋 How to use this app</div>
+      <div class="instructions-grid">
+        <div class="inst-step">
+          <div class="inst-step-num">Step 1</div>
+          <div class="inst-step-title">Enter NDC-11</div>
+          <div class="inst-step-body">Scan or type the <strong>11-digit NDC</strong> from the <strong>purchasing (outer) UOM</strong>. The app will check if this item has been scanned before and look up its characteristics from the master database.</div>
+        </div>
+        <div class="inst-step">
+          <div class="inst-step-num">Step 2</div>
+          <div class="inst-step-title">Confirm Characteristics</div>
+          <div class="inst-step-body">Review the <strong>UOM1, UOM2, and UOM3</strong> values pulled from the master. Click <strong>✓ Correct</strong> if they match the item in hand. If wrong, click <strong>✎ Incorrect — Edit</strong> to enter the right values. If you can't tell, click <strong>⚠ Unable to Confirm</strong>.</div>
+        </div>
+        <div class="inst-step">
+          <div class="inst-step-num">Step 3</div>
+          <div class="inst-step-title">Scan Barcodes</div>
+          <div class="inst-step-body">Select <strong>Purchasing</strong> for the outer/case barcode or <strong>UOM1 (if different)</strong> for the inner/each barcode. Scan with the connected reader or type manually, then press <strong>Enter</strong>. Add a note if needed, then click <strong>→ Next Item</strong> when done.</div>
+        </div>
+      </div>
+      <div class="inst-note">
+        💡 <strong>Tip:</strong> If the NDC on the purchasing UOM and the inner UOM (UOM1) are the same, you can scan all barcodes under <strong>Purchasing</strong> — there is no need to use the UOM1 button in that case.
+      </div>
+    </div>
+
     <div class="scan-layout">
 
       <!-- LEFT: inputs -->
@@ -549,6 +663,7 @@
         <!-- NDC (required) -->
         <div class="card" style="margin-bottom:16px">
           <div class="card-title">💊 NDC-11 <span style="color:var(--red);font-size:10px;margin-left:4px">REQUIRED</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">This should be the NDC on the <strong style="color:var(--text)">purchasing UOM</strong>.</div>
           <div class="field" style="margin-bottom:0">
             <div class="input-wrap">
               <input type="text" id="input-ndc"
@@ -568,7 +683,7 @@
           </div>
         </div>
 
-        <!-- E# (optional) -->
+        <!-- E# (optional) — HIDDEN, preserved for future use
         <div class="card" style="margin-bottom:16px">
           <div class="card-title">E# <span style="color:var(--text-dim);font-size:10px;margin-left:4px">OPTIONAL</span></div>
           <div class="input-wrap">
@@ -576,6 +691,9 @@
             <button class="clear-btn" onclick="document.getElementById('input-enum').value=''">Clear</button>
           </div>
         </div>
+        -->
+        <!-- Hidden E# input kept for data model compatibility -->
+        <input type="hidden" id="input-enum" value="" />
 
         <!-- Characteristics -->
         <div class="card" id="char-card" style="margin-bottom:16px">
@@ -687,17 +805,22 @@
         <!-- Barcode -->
         <div class="card">
           <div class="card-title">⬡ Barcode</div>
-          <div class="btype-grid">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">
+            If there is no inner NDC (i.e., the NDC is the same on the purchasing UOM and UOM1), you can scan everything under <strong style="color:var(--text)">Purchasing</strong>.
+          </div>
+          <div class="btype-grid" style="grid-template-columns:1fr 1fr">
             <button class="btype-btn" id="btype-outer" onclick="selectBarcodeType('outer')">
-              Outer<br><span style="font-size:9px;opacity:0.7">CASE / SHELF</span>
+              Purchasing<br><span style="font-size:9px;opacity:0.7">OUTER / CASE</span>
             </button>
             <button class="btype-btn" id="btype-inner" onclick="selectBarcodeType('inner')">
-              Inner<br><span style="font-size:9px;opacity:0.7">UNIT / EACH</span>
-            </button>
-            <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">
-              Other<br><span style="font-size:9px;opacity:0.7">BARCODE TYPE</span>
+              UOM1 (if different)<br><span style="font-size:9px;opacity:0.7">INNER / EACH</span>
             </button>
           </div>
+          <!-- Other barcode type — HIDDEN, preserved for future use
+          <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">
+            Other<br><span style="font-size:9px;opacity:0.7">BARCODE TYPE</span>
+          </button>
+          -->
           <div class="input-wrap">
             <input type="text" id="input-barcode"
               placeholder="Select type above, then scan…"
@@ -706,6 +829,11 @@
             <button class="clear-btn" onclick="clearBarcode()">Clear</button>
           </div>
           <div id="scan-feedback"></div>
+          <!-- Notes -->
+          <div style="margin-top:14px">
+            <label for="input-notes" style="margin-bottom:6px">Notes <span style="color:var(--text-dim);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">optional</span></label>
+            <textarea id="input-notes" placeholder="Any comments about this item or scan…"></textarea>
+          </div>
         </div>
 
       </div>
@@ -719,7 +847,6 @@
           <hr class="divider">
           <div class="scan-meta">
             <div>NDC: <span class="val" id="stat-ndc">—</span></div>
-            <div>E#: <span class="val" id="stat-enum">—</span></div>
             <div>Last scan: <span class="val" id="stat-last">—</span></div>
           </div>
           <button class="btn btn-amber btn-sm btn-full" id="next-item-btn" onclick="nextItem()">
@@ -737,8 +864,8 @@
         </div>
       </div>
 
-    </div>
-  </div>
+    </div><!-- end scan-layout -->
+  </div><!-- end screen-scan -->
 
   <!-- RECORDS SCREEN -->
   <div id="screen-records" class="screen">
@@ -773,8 +900,8 @@
             <th onclick="sortBy('barcode_value')">Barcode</th>
             <th onclick="sortBy('gtin')">GTIN</th>
             <th onclick="sortBy('symbology')">Symbology</th>
-            <th onclick="sortBy('enum')">E#</th>
             <th onclick="sortBy('scanned_by')">Scanned By</th>
+            <th onclick="sortBy('notes')">Notes</th>
           </tr>
         </thead>
         <tbody id="records-tbody">
@@ -817,10 +944,25 @@ let uomState = {
   source: null       // 'master' | 'corrected' | 'manual' | 'unconfirmed'
 };
 
+// ── Instructions toggle ──
+function toggleInstructions() {
+  const panel = document.getElementById('instructions-panel');
+  const btn   = document.getElementById('toggle-help-btn');
+  const hidden = panel.classList.toggle('hidden');
+  localStorage.setItem('rxscanner_hide_instructions', hidden ? '1' : '');
+  btn.textContent = hidden ? '? Show Guide' : '? Hide Guide';
+}
+
 // ── Init ──
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('rxscanner_name');
   if (saved) document.getElementById('input-name').value = saved;
+  // Restore instructions preference
+  if (localStorage.getItem('rxscanner_hide_instructions') === '1') {
+    document.getElementById('instructions-panel').classList.add('hidden');
+    const btn = document.getElementById('toggle-help-btn');
+    if (btn) btn.textContent = '? Show Guide';
+  }
   updateOnlineStatus();
   updateSyncBanner();
 });
@@ -856,6 +998,7 @@ function startSession() {
   document.getElementById('user-badge-name').textContent = name;
   document.getElementById('user-badge').style.display = '';
   document.getElementById('change-user-btn').style.display = '';
+  document.getElementById('toggle-help-btn').style.display = '';
   document.getElementById('main-nav').style.display = '';
   showScreen('scan');
   switchTab('scan');
@@ -1364,6 +1507,7 @@ async function saveScan() {
     uom3:          uomState.uom3,
     uom_confirmed: uomState.status === 'confirmed',
     uom_source:    uomState.source || 'unconfirmed',
+    notes:         document.getElementById('input-notes').value.trim() || null,
     scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     timestamp:     now.toISOString()
   };
@@ -1457,23 +1601,23 @@ function hideFeedback() {
 function nextItem() {
   clearNDC();  // clearNDC already calls resetCharacteristics
   document.getElementById('input-enum').value = '';
+  document.getElementById('input-notes').value = '';
   document.getElementById('input-barcode').value = '';
   lockBarcode();
   hideFeedback();
   document.getElementById('next-item-btn').classList.remove('visible');
   document.getElementById('stat-ndc').textContent = '—';
-  document.getElementById('stat-enum').textContent = '—';
   document.getElementById('input-ndc').focus();
 }
 
 function resetScanState() {
   clearNDC();
   document.getElementById('input-enum').value = '';
+  document.getElementById('input-notes').value = '';
   lockBarcode();
   hideFeedback();
   document.getElementById('next-item-btn').classList.remove('visible');
   document.getElementById('stat-ndc').textContent = '—';
-  document.getElementById('stat-enum').textContent = '—';
   document.getElementById('stat-last').textContent = '—';
 }
 
@@ -1553,8 +1697,8 @@ function renderRecordsTable() {
       <td class="mono-val">${r.barcode_value || ''}</td>
       <td class="mono-val">${gtinCell}</td>
       <td style="color:var(--text-dim)">${r.symbology || ''}</td>
-      <td>${r.enum || ''}</td>
       <td>${r.scanned_by || ''}</td>
+      <td style="color:var(--text-muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.notes || ''}</td>
     </tr>`;
   }).join('');
 }
@@ -1568,7 +1712,7 @@ function exportCSV() {
     (r.enum||'').toLowerCase().includes(f) ||
     (r.scanned_by||'').toLowerCase().includes(f)
   );
-  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','enum','scanned_by'];
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source'];
   const csv = [cols.join(','), ...rows.map(r =>
     cols.map(c => JSON.stringify(r[c] || '')).join(',')
   )].join('\n');
