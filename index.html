@@ -357,6 +357,101 @@
   #next-item-btn { display: none; margin-top: 14px; }
   #next-item-btn.visible { display: flex; }
 
+  /* ── Characteristics card ── */
+  #char-card { display: none; }
+  #char-card.visible { display: block; }
+
+  .char-state-loading .char-body { display: none; }
+  .char-state-loaded  .char-body-loading { display: none; }
+  .char-state-loaded  .char-body-notfound { display: none; }
+  .char-state-loaded  .char-body-edit { display: none; }
+  .char-state-notfound .char-body-loading { display: none; }
+  .char-state-notfound .char-body-loaded { display: none; }
+  .char-state-notfound .char-body-edit { display: none; }
+  .char-state-edit .char-body-loading { display: none; }
+  .char-state-edit .char-body-loaded { display: none; }
+  .char-state-edit .char-body-notfound { display: none; }
+  .char-state-confirmed .char-body-loading { display: none; }
+  .char-state-confirmed .char-body-loaded { display: none; }
+  .char-state-confirmed .char-body-notfound { display: none; }
+  .char-state-confirmed .char-body-edit { display: none; }
+  .char-state-unconfirmed .char-body-loading { display: none; }
+  .char-state-unconfirmed .char-body-loaded { display: none; }
+  .char-state-unconfirmed .char-body-notfound { display: none; }
+  .char-state-unconfirmed .char-body-edit { display: none; }
+
+  .uom-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .uom-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .uom-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .uom-val {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .uom-val.empty { color: var(--text-dim); font-style: italic; font-size: 12px; }
+
+  .char-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .char-confirmed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+  }
+  .char-unconfirmed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+  }
+  .char-notfound-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
   .mini-list { margin-top: 16px; }
   .mini-item {
     padding: 8px 0;
@@ -479,6 +574,113 @@
           <div class="input-wrap">
             <input type="text" id="input-enum" placeholder="E12345" autocomplete="off" />
             <button class="clear-btn" onclick="document.getElementById('input-enum').value=''">Clear</button>
+          </div>
+        </div>
+
+        <!-- Characteristics -->
+        <div class="card" id="char-card" style="margin-bottom:16px">
+          <div class="card-title">
+            ◈ Characteristics
+            <span id="char-status-pill" style="display:none"></span>
+          </div>
+
+          <!-- Loading -->
+          <div class="char-body char-body-loading">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+              <span class="pulse">◌</span> Looking up NDC in master…
+            </div>
+          </div>
+
+          <!-- Loaded: show UOMs for confirmation -->
+          <div class="char-body char-body-loaded">
+            <div class="uom-grid">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val" id="char-uom1-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2</div>
+                <div class="uom-val" id="char-uom2-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3</div>
+                <div class="uom-val" id="char-uom3-display">—</div>
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="confirmCharacteristics()">✓ Correct</button>
+              <button class="btn btn-ghost btn-sm" onclick="enterEditMode()">✎ Incorrect — Edit</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Not found in master -->
+          <div class="char-body char-body-notfound">
+            <div class="char-notfound-banner" style="margin-bottom:12px">
+              ○ NDC not found in master — enter UOMs manually
+            </div>
+            <div class="uom-grid" style="margin-bottom:12px">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val empty">n/a</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2</div>
+                <input type="text" id="char-uom2-manual" placeholder="e.g. 10" autocomplete="off" style="margin-top:4px" />
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3</div>
+                <input type="text" id="char-uom3-manual" placeholder="e.g. 6" autocomplete="off" style="margin-top:4px" />
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="saveManualUOMs()">✓ Save UOMs</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Edit mode: master values wrong -->
+          <div class="char-body char-body-edit">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:10px">
+              Enter corrected values — UOM1 is read-only from master
+            </div>
+            <div class="uom-grid" style="margin-bottom:12px">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val" id="char-uom1-edit-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2 <span style="color:var(--text-dim)">edit</span></div>
+                <input type="text" id="char-uom2-edit" placeholder="Enter UOM2" autocomplete="off" style="margin-top:4px" />
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3 <span style="color:var(--text-dim)">edit</span></div>
+                <input type="text" id="char-uom3-edit" placeholder="Enter UOM3" autocomplete="off" style="margin-top:4px" />
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="saveEditedUOMs()">✓ Save Corrections</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelEdit()">✕ Cancel</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Confirmed state -->
+          <div class="char-body char-body-confirmed" style="display:none">
+            <div class="char-confirmed-banner">
+              <span>✓</span>
+              <span id="char-confirmed-summary"></span>
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Edit</button>
+            </div>
+          </div>
+
+          <!-- Unconfirmed state -->
+          <div class="char-body char-body-unconfirmed" style="display:none">
+            <div class="char-unconfirmed-banner">
+              <span>⚠</span>
+              <span>Marked as unable to confirm — UOMs not recorded</span>
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Retry</button>
+            </div>
           </div>
         </div>
 
@@ -606,6 +808,15 @@ let sortCol = 'timestamp';
 let sortDir = -1;
 let ndcDebounceTimer = null;
 
+// UOM / characteristics state
+let uomState = {
+  status: 'idle',    // idle | loading | loaded | notfound | edit | confirmed | unconfirmed
+  uom1: null,
+  uom2: null,
+  uom3: null,
+  source: null       // 'master' | 'corrected' | 'manual' | 'unconfirmed'
+};
+
 // ── Init ──
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('rxscanner_name');
@@ -719,8 +930,9 @@ async function confirmNDC(rawValue) {
   document.getElementById('stat-ndc').textContent = rawValue;
 
   if (!navigator.onLine) {
-    // offline — skip check, allow scanning
+    // offline — skip check, allow scanning; characteristics unavailable
     hideNdcCheck();
+    resetCharacteristics();
     unlockBarcode();
     return;
   }
@@ -777,6 +989,8 @@ async function confirmNDC(rawValue) {
     hideNdcCheck();
   }
 
+  // Also trigger characteristics lookup (runs in parallel — already have ndcConfirmed set)
+  lookupCharacteristics(ndcConfirmed);
   unlockBarcode();
 }
 
@@ -794,6 +1008,7 @@ function clearNDC() {
   document.getElementById('ndc-required-warn').classList.remove('visible');
   ndcConfirmed = '';
   hideNdcCheck();
+  resetCharacteristics();
   lockBarcode();
   selectedBarcodeType = '';
   document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
@@ -957,6 +1172,151 @@ function parseBarcode(raw) {
   return { aimId, symbology, cleanValue, gtin, gtinValid, upcValid };
 }
 
+// ── Characteristics / UOM ──
+
+function setCharState(state) {
+  uomState.status = state;
+  const card = document.getElementById('char-card');
+  card.className = 'card';  // reset
+  // Show/hide bodies via state class on card
+  const bodies = ['loading','loaded','notfound','edit','confirmed','unconfirmed'];
+  bodies.forEach(s => {
+    const el = card.querySelector('.char-body-' + s);
+    if (el) el.style.display = (s === state) ? '' : 'none';
+  });
+  card.classList.add('visible');
+}
+
+function resetCharacteristics() {
+  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, source: null };
+  const card = document.getElementById('char-card');
+  card.classList.remove('visible');
+  // hide all bodies
+  card.querySelectorAll('.char-body').forEach(el => el.style.display = 'none');
+  // also hide char-body-confirmed and char-body-unconfirmed (not in .char-body)
+  const extra = ['char-body-confirmed','char-body-unconfirmed'];
+  extra.forEach(cls => { const el = card.querySelector('.' + cls); if(el) el.style.display = 'none'; });
+}
+
+async function lookupCharacteristics(ndcValue) {
+  resetCharacteristics();
+  setCharState('loading');
+
+  const digits = ndcValue.replace(/\D/g,'');
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ndc_master?pkg=eq.${encodeURIComponent(ndcValue)}&limit=1`,
+      { headers: sbHeaders() }
+    );
+    let data = await res.json();
+
+    // If no match with dashes, try digits-only
+    if ((!data || data.length === 0) && digits !== ndcValue) {
+      const res2 = await fetch(
+        `${SUPABASE_URL}/rest/v1/ndc_master?pkg=eq.${encodeURIComponent(digits)}&limit=1`,
+        { headers: sbHeaders() }
+      );
+      data = await res2.json();
+    }
+
+    if (data && data.length > 0) {
+      const row = data[0];
+      uomState.uom1 = row.uom1 || null;
+      uomState.uom2 = row.uom2 || null;
+      uomState.uom3 = row.uom3 || null;
+
+      // Populate display boxes
+      const fmt = v => v || '<span class="empty">—</span>';
+      document.getElementById('char-uom1-display').innerHTML = fmt(uomState.uom1);
+      document.getElementById('char-uom2-display').innerHTML = fmt(uomState.uom2);
+      document.getElementById('char-uom3-display').innerHTML = fmt(uomState.uom3);
+      document.getElementById('char-uom1-edit-display').textContent = uomState.uom1 || '—';
+
+      setCharState('loaded');
+    } else {
+      setCharState('notfound');
+    }
+  } catch(e) {
+    console.error('Characteristics lookup failed', e);
+    setCharState('notfound');
+  }
+}
+
+function confirmCharacteristics() {
+  uomState.source = 'master';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function enterEditMode() {
+  document.getElementById('char-uom2-edit').value = uomState.uom2 || '';
+  document.getElementById('char-uom3-edit').value = uomState.uom3 || '';
+  setCharState('edit');
+  document.getElementById('char-uom2-edit').focus();
+}
+
+function cancelEdit() {
+  setCharState('loaded');
+}
+
+function saveEditedUOMs() {
+  const u2 = document.getElementById('char-uom2-edit').value.trim();
+  const u3 = document.getElementById('char-uom3-edit').value.trim();
+  uomState.uom2 = u2 || null;
+  uomState.uom3 = u3 || null;
+  uomState.source = 'corrected';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function saveManualUOMs() {
+  const u2 = document.getElementById('char-uom2-manual').value.trim();
+  const u3 = document.getElementById('char-uom3-manual').value.trim();
+  uomState.uom2 = u2 || null;
+  uomState.uom3 = u3 || null;
+  uomState.source = 'manual';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function showConfirmedBanner() {
+  const parts = [];
+  if (uomState.uom1) parts.push(`UOM1: ${uomState.uom1}`);
+  if (uomState.uom2) parts.push(`UOM2: ${uomState.uom2}`);
+  if (uomState.uom3) parts.push(`UOM3: ${uomState.uom3}`);
+  const suffix = uomState.source === 'corrected' ? ' (corrected)'
+               : uomState.source === 'manual'    ? ' (manual)'
+               : '';
+  document.getElementById('char-confirmed-summary').textContent =
+    (parts.length ? parts.join(' · ') : 'No UOM data') + suffix;
+
+  // Hide all body sections, show confirmed banner
+  const card = document.getElementById('char-card');
+  card.querySelectorAll('[class*="char-body"]').forEach(el => el.style.display = 'none');
+  card.querySelector('.char-body-confirmed').style.display = '';
+  uomState.status = 'confirmed';
+}
+
+function unableToConfirm() {
+  uomState.source = 'unconfirmed';
+  uomState.status = 'unconfirmed';
+  uomState.uom1 = null; uomState.uom2 = null; uomState.uom3 = null;
+  const card = document.getElementById('char-card');
+  card.querySelectorAll('[class*="char-body"]').forEach(el => el.style.display = 'none');
+  card.querySelector('.char-body-unconfirmed').style.display = '';
+  uomState.status = 'unconfirmed';
+}
+
+function reopenCharacteristics() {
+  // Go back to loaded state if we had master data, else notfound/edit
+  if (uomState.uom1 !== null || (uomState.source !== 'manual' && uomState.source !== 'unconfirmed')) {
+    // Re-fetch to restore
+    lookupCharacteristics(ndcConfirmed);
+  } else {
+    setCharState('notfound');
+  }
+}
+
 // ── Barcode input ──
 function onBarcodeKey(e) {
   if (e.key === 'Enter') saveScan();
@@ -999,6 +1359,11 @@ async function saveScan() {
     gtin:          parsed.gtin,
     gtin_valid:    parsed.gtinValid,
     upc_valid:     parsed.upcValid,
+    uom1:          uomState.uom1,
+    uom2:          uomState.uom2,
+    uom3:          uomState.uom3,
+    uom_confirmed: uomState.status === 'confirmed',
+    uom_source:    uomState.source || 'unconfirmed',
     scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     timestamp:     now.toISOString()
   };
@@ -1090,7 +1455,7 @@ function hideFeedback() {
 
 // ── Next item ──
 function nextItem() {
-  clearNDC();
+  clearNDC();  // clearNDC already calls resetCharacteristics
   document.getElementById('input-enum').value = '';
   document.getElementById('input-barcode').value = '';
   lockBarcode();
