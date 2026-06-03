@@ -560,6 +560,23 @@
     line-height: 1.5;
   }
 
+  /* ── Yes/No toggle buttons ── */
+  .yn-group { display: flex; gap: 6px; margin-top: 6px; }
+  .yn-btn {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .yn-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .yn-btn.yn-yes.active { border-color: var(--red); background: var(--red-dim); color: var(--red); }
+  .yn-btn.yn-no.active  { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+  .flag-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; margin-top: 4px; }
+  .flag-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .flag-box.flag-yes { border-color: var(--red); background: var(--red-dim); }
+  .flag-box.flag-no  { border-color: var(--green); background: var(--green-dim); }
+
   /* ── Notes field ── */
   textarea#input-notes {
     width: 100%;
@@ -643,7 +660,7 @@
         <div class="inst-step">
           <div class="inst-step-num">step 2 ✌️</div>
           <div class="inst-step-title">check the deets</div>
-          <div class="inst-step-body">peep the <strong>UOM1, UOM2, and UOM3</strong> values we pulled. hit <strong>✓ slay</strong> if they look right. if they're mid, hit <strong>✎ fix it</strong>. if you genuinely cannot tell, hit <strong>⚠ idk man</strong>. 👀</div>
+          <div class="inst-step-body">peep the <strong>UOM1, UOM2, and UOM3</strong> values we pulled. hit <strong>✅ slay</strong> if they look right. if they're mid, hit <strong>✏️ fix it</strong>. if you genuinely cannot tell, hit <strong>🤷 idk man</strong>. 👀</div>
         </div>
         <div class="inst-step">
           <div class="inst-step-num">step 3 🤟</div>
@@ -726,6 +743,23 @@
                 <div class="uom-val" id="char-uom3-display">—</div>
               </div>
             </div>
+            <!-- Temperature control & hazmat flags -->
+            <div class="flag-row" id="flags-loaded">
+              <div class="flag-box" id="flag-temp-box">
+                <div class="uom-label">🌡 Temp Controlled?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-temp-yes" onclick="setFlag('isTempControl', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-temp-no"  onclick="setFlag('isTempControl', false)">No</button>
+                </div>
+              </div>
+              <div class="flag-box" id="flag-hazmat-box">
+                <div class="uom-label">☣ Hazardous?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-hazmat-yes" onclick="setFlag('isHazmat', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-hazmat-no"  onclick="setFlag('isHazmat', false)">No</button>
+                </div>
+              </div>
+            </div>
             <div class="char-action-row">
               <button class="btn btn-primary btn-sm" onclick="confirmCharacteristics()">✅ slay</button>
               <button class="btn btn-ghost btn-sm" onclick="enterEditMode()">✏️ fix it</button>
@@ -750,6 +784,22 @@
               <div class="uom-box">
                 <div class="uom-label">UOM3</div>
                 <input type="text" id="char-uom3-manual" placeholder="e.g. 6" autocomplete="off" style="margin-top:4px" />
+              </div>
+            </div>
+            <div class="flag-row">
+              <div class="flag-box" id="flag-temp-box-nf">
+                <div class="uom-label">🌡 Temp Controlled?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-temp-yes-nf" onclick="setFlag('isTempControl', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-temp-no-nf"  onclick="setFlag('isTempControl', false)">No</button>
+                </div>
+              </div>
+              <div class="flag-box" id="flag-hazmat-box-nf">
+                <div class="uom-label">☣ Hazardous?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-hazmat-yes-nf" onclick="setFlag('isHazmat', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-hazmat-no-nf"  onclick="setFlag('isHazmat', false)">No</button>
+                </div>
               </div>
             </div>
             <div class="char-action-row">
@@ -907,7 +957,7 @@
           </tr>
         </thead>
         <tbody id="records-tbody">
-          <tr class="empty-row"><td colspan="6">Loading records…</td></tr>
+          <tr class="empty-row"><td colspan="6">loading the data rq… 🔍</td></tr>
         </tbody>
       </table>
     </div>
@@ -943,7 +993,9 @@ let uomState = {
   uom1: null,
   uom2: null,
   uom3: null,
-  source: null       // 'master' | 'corrected' | 'manual' | 'unconfirmed'
+  isTempControl: null,
+  isHazmat: null,
+  source: null
 };
 
 // ── Instructions toggle ──
@@ -1383,7 +1435,7 @@ function setCharState(state) {
 }
 
 function resetCharacteristics() {
-  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, source: null };
+  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, isTempControl: null, isHazmat: null, source: null };
   const card = document.getElementById('char-card');
   card.classList.remove('visible');
   // hide all bodies
@@ -1419,14 +1471,16 @@ async function lookupCharacteristics(ndcValue) {
       uomState.uom1 = row.uom1 || null;
       uomState.uom2 = row.uom2 || null;
       uomState.uom3 = row.uom3 || null;
+      uomState.isTempControl = row.is_temperature_control != null ? Boolean(row.is_temperature_control) : null;
+      uomState.isHazmat      = row.is_hazmat != null ? Boolean(row.is_hazmat) : null;
 
-      // Populate display boxes
       const fmt = v => v || '<span class="empty">—</span>';
       document.getElementById('char-uom1-display').innerHTML = fmt(uomState.uom1);
       document.getElementById('char-uom2-display').innerHTML = fmt(uomState.uom2);
       document.getElementById('char-uom3-display').innerHTML = fmt(uomState.uom3);
       document.getElementById('char-uom1-edit-display').textContent = uomState.uom1 || '—';
 
+      populateFlagButtons();
       setCharState('loaded');
     } else {
       setCharState('notfound');
@@ -1479,6 +1533,10 @@ function showConfirmedBanner() {
   if (uomState.uom1) parts.push(`UOM1: ${uomState.uom1}`);
   if (uomState.uom2) parts.push(`UOM2: ${uomState.uom2}`);
   if (uomState.uom3) parts.push(`UOM3: ${uomState.uom3}`);
+  if (uomState.isTempControl === true)  parts.push('🌡 Temp Controlled');
+  if (uomState.isTempControl === false) parts.push('✓ Not Temp Controlled');
+  if (uomState.isHazmat === true)       parts.push('☣ Hazardous');
+  if (uomState.isHazmat === false)      parts.push('✓ Not Hazardous');
   const suffix = uomState.source === 'corrected' ? ' (corrected)'
                : uomState.source === 'manual'    ? ' (manual)'
                : '';
@@ -1510,6 +1568,30 @@ function reopenCharacteristics() {
   } else {
     setCharState('notfound');
   }
+}
+
+// ── Flag toggle helpers ──
+function setFlag(field, value) {
+  uomState[field] = value;
+  const prefix = field === 'isTempControl' ? 'flag-temp' : 'flag-hazmat';
+  ['', '-nf'].forEach(suffix => {
+    const yesBtn = document.getElementById(prefix + '-yes' + suffix);
+    const noBtn  = document.getElementById(prefix + '-no'  + suffix);
+    const box    = document.getElementById(prefix + '-box' + suffix);
+    if (!yesBtn) return;
+    yesBtn.classList.toggle('active', value === true);
+    noBtn.classList.toggle('active',  value === false);
+    if (box) {
+      box.classList.toggle('flag-yes', value === true);
+      box.classList.toggle('flag-no',  value === false);
+      box.classList.toggle('flag-box', true);
+    }
+  });
+}
+
+function populateFlagButtons() {
+  if (uomState.isTempControl !== null) setFlag('isTempControl', uomState.isTempControl);
+  if (uomState.isHazmat !== null)      setFlag('isHazmat',      uomState.isHazmat);
 }
 
 // ── Barcode input ──
@@ -1556,8 +1638,10 @@ async function saveScan() {
     uom1:          uomState.uom1,
     uom2:          uomState.uom2,
     uom3:          uomState.uom3,
-    uom_confirmed: uomState.status === 'confirmed',
-    uom_source:    uomState.source || 'unconfirmed',
+    uom_confirmed:          uomState.status === 'confirmed',
+    uom_source:             uomState.source || 'unconfirmed',
+    is_temperature_control: uomState.isTempControl,
+    is_hazmat:              uomState.isHazmat,
     notes:         document.getElementById('input-notes').value.trim() || null,
     scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     timestamp:     now.toISOString()
@@ -1754,7 +1838,7 @@ function renderRecordsTable() {
   });
   const tbody = document.getElementById('records-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No records found.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">nothing here bestie 🤷</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -1791,7 +1875,7 @@ function exportCSV() {
     (r.enum||'').toLowerCase().includes(f) ||
     (r.scanned_by||'').toLowerCase().includes(f)
   );
-  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source'];
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source','is_temperature_control','is_hazmat'];
   const csv = [cols.join(','), ...rows.map(r =>
     cols.map(c => JSON.stringify(r[c] || '')).join(',')
   )].join('\n');
