@@ -734,7 +734,7 @@ function toggleTheme() {
 
 // ── Instructions toggle ──
 function toggleInstructions() {
-  const panel = document.getElementById('instructions-panel');
+  const panel = document.getElementById('instructions-panel'); if (!panel) return;
   const btn   = document.getElementById('toggle-help-btn');
   const hidden = panel.classList.toggle('hidden');
   localStorage.setItem('rxscanner_hide_instructions', hidden ? '1' : '');
@@ -753,7 +753,7 @@ window.addEventListener('load', () => {
   }
   // Restore instructions preference
   if (localStorage.getItem('rxscanner_hide_instructions') === '1') {
-    document.getElementById('instructions-panel').classList.add('hidden');
+    const ip = document.getElementById('instructions-panel'); if (ip) ip.classList.add('hidden');
     const btn = document.getElementById('toggle-help-btn');
     if (btn) btn.textContent = '? Show Guide';
   }
@@ -792,7 +792,7 @@ function startSession() {
   document.getElementById('user-badge-name').textContent = name;
   document.getElementById('user-badge').style.display = '';
   document.getElementById('change-user-btn').style.display = '';
-  document.getElementById('toggle-help-btn').style.display = '';
+  const helpBtn = document.getElementById('toggle-help-btn'); if (helpBtn) helpBtn.style.display = '';
   document.getElementById('main-nav').style.display = '';
   showScreen('scan');
   switchTab('scan');
