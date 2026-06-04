@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharmacy Inventory Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --border: #30363d;
+    --border-light: #21262d;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim: #484f58;
+    --green: #3fb950;
+    --green-dim: #1a3a20;
+    --green-glow: rgba(63,185,80,0.15);
+    --amber: #d29922;
+    --amber-dim: #3a2a00;
+    --amber-glow: rgba(210,153,34,0.15);
+    --blue: #58a6ff;
+    --blue-dim: #0d2340;
+    --red: #f85149;
+    --red-dim: #3a1010;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* ── Light mode overrides ── */
+  body.light-mode {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --surface2: #eaeef2;
+    --border: #d0d7de;
+    --border-light: #e4e9ef;
+    --text: #1f2328;
+    --text-muted: #656d76;
+    --text-dim: #adb5bd;
+    --green: #1a7f37;
+    --green-dim: #dafbe1;
+    --green-glow: rgba(26,127,55,0.12);
+    --amber: #9a6700;
+    --amber-dim: #fff8c5;
+    --amber-glow: rgba(154,103,0,0.12);
+    --blue: #0969da;
+    --blue-dim: #ddf4ff;
+    --red: #d1242f;
+    --red-dim: #ffebe9;
+  }
+
+  /* Theme toggle button */
+  #theme-toggle-btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #theme-toggle-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--text-muted); }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .pill-green { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .pill-red   { border-color: var(--red);   color: var(--red);   background: var(--red-dim);   }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-badge { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .user-badge strong { color: var(--text); }
+
+  /* ── Nav tabs ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+  }
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* ── Sync banner ── */
+  #sync-banner {
+    background: var(--amber-dim);
+    border-bottom: 1px solid var(--amber);
+    padding: 10px 24px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+  }
+  #sync-banner.visible { display: flex; }
+  .sync-msg { font-size: 13px; color: var(--amber); flex: 1; }
+  .sync-msg strong { font-family: var(--mono); }
+
+  /* ── Main ── */
+  main { flex: 1; padding: 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Setup ── */
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 48px;
+    max-width: 480px;
+    margin: 48px auto;
+  }
+  .setup-title {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--green);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .setup-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+
+  /* ── Forms ── */
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  label .required { color: var(--red); margin-left: 3px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="text"]:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+  }
+  input[type="text"].invalid {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(248,81,73,0.15);
+  }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+  .field { margin-bottom: 20px; }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #0d1117; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-muted); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .btn-amber:hover { filter: brightness(1.2); }
+  .btn-sm { padding: 6px 12px; font-size: 11px; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ── Scan layout ── */
+  .scan-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* NDC duplicate check box */
+  #ndc-check-box {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+  #ndc-check-box.checking {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  #ndc-check-box.found {
+    display: flex;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+  }
+  #ndc-check-box.clear {
+    display: flex;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--green);
+  }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  #ndc-format-warn {
+    font-size: 11px;
+    color: var(--amber);
+    font-family: var(--mono);
+    margin-top: 5px;
+    display: none;
+  }
+  #ndc-format-warn.visible { display: block; }
+  #ndc-required-warn {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f85149;
+    color: var(--red);
+    font-family: var(--mono);
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: #3a1010;
+    background: var(--red-dim);
+    border: 2px solid #f85149;
+    border-color: var(--red);
+    border-radius: 6px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  #ndc-required-warn.visible { display: flex; }
+
+  /* Input with clear button */
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 56px; }
+  .input-wrap input:disabled { opacity: 0.35; cursor: not-allowed; }
+  .clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .clear-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* Barcode type buttons */
+  .btype-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .btype-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .btype-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .btype-btn.selected {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+  }
+
+  /* Barcode value input */
+  #input-barcode {
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    padding-right: 56px;
+  }
+
+  /* Save feedback */
+  #scan-feedback {
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  #scan-feedback.success { display: flex; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  #scan-feedback.error   { display: flex; background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red);   }
+  #scan-feedback.warn    { display: flex; background: var(--amber-dim); border: 1px solid var(--amber); color: var(--amber); }
+
+  /* Right column */
+  .counter-big {
+    font-family: var(--mono);
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--green);
+    line-height: 1;
+    margin: 12px 0 4px;
+  }
+  .counter-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .scan-meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); line-height: 1.9; }
+  .scan-meta .val { color: var(--text); }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  #next-item-btn { display: none; margin-top: 14px; }
+  #next-item-btn.visible { display: flex; }
+
+  /* ── Characteristics card ── */
+  #char-card { display: none; }
+  #char-card.visible { display: block; }
+
+  .char-state-loading .char-body { display: none; }
+  .char-state-loaded  .char-body-loading { display: none; }
+  .char-state-loaded  .char-body-notfound { display: none; }
+  .char-state-loaded  .char-body-edit { display: none; }
+  .char-state-notfound .char-body-loading { display: none; }
+  .char-state-notfound .char-body-loaded { display: none; }
+  .char-state-notfound .char-body-edit { display: none; }
+  .char-state-edit .char-body-loading { display: none; }
+  .char-state-edit .char-body-loaded { display: none; }
+  .char-state-edit .char-body-notfound { display: none; }
+  .char-state-confirmed .char-body-loading { display: none; }
+  .char-state-confirmed .char-body-loaded { display: none; }
+  .char-state-confirmed .char-body-notfound { display: none; }
+  .char-state-confirmed .char-body-edit { display: none; }
+  .char-state-unconfirmed .char-body-loading { display: none; }
+  .char-state-unconfirmed .char-body-loaded { display: none; }
+  .char-state-unconfirmed .char-body-notfound { display: none; }
+  .char-state-unconfirmed .char-body-edit { display: none; }
+
+  .uom-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .uom-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .uom-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .uom-val {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .uom-val.empty { color: var(--text-dim); font-style: italic; font-size: 12px; }
+
+  .char-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .char-confirmed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+  }
+  .char-unconfirmed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+  }
+  .char-notfound-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #3a2a00;
+    background: var(--amber-dim);
+    border: 2px solid #d29922;
+    border-color: var(--amber);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: #d29922;
+    color: var(--amber);
+  }
+
+  .mini-list { margin-top: 16px; }
+  .mini-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .mini-item:last-child { border-bottom: none; }
+  .mini-item .ndc-val { color: var(--blue); }
+  .mini-item .bc { color: var(--text); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Records ── */
+  .metrics-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  .metric-val { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--green); }
+  .metric-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .records-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .records-toolbar input { flex: 1; min-width: 200px; }
+
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+    cursor: pointer; white-space: nowrap; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 9px 12px; color: var(--text-muted); }
+  tbody td.mono-val { color: var(--text); }
+  tbody td.ndc-val { color: var(--blue); }
+  .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; overflow-x: auto; }
+  .empty-row td { text-align: center; padding: 40px; color: var(--text-dim); }
+
+  /* ── Instructions panel ── */
+  #instructions-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    transition: all 0.2s;
+  }
+  #instructions-panel.hidden { display: none; }
+  .instructions-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .instructions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .inst-step {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .inst-step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .inst-step-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+  .inst-step-body {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .inst-step-body strong { color: var(--text); font-weight: 600; }
+  .inst-note {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--blue-dim);
+    border: 1px solid var(--blue);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--blue);
+    line-height: 1.5;
+  }
+
+  /* ── Yes/No toggle buttons ── */
+  .yn-group {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .yn-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .yn-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .yn-btn.yn-yes.active {
+    border-color: var(--red);
+    background: var(--red-dim);
+    color: var(--red);
+  }
+  .yn-btn.yn-no.active {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+  }
+  .flag-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+    margin-top: 4px;
+  }
+  .flag-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .flag-box.flag-yes {
+    border-color: var(--red);
+    background: var(--red-dim);
+  }
+  .flag-box.flag-no {
+    border-color: var(--green);
+    background: var(--green-dim);
+  }
+
+  /* ── Mode select (on setup screen) ── */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .mode-btn {
+    font-family: var(--mono);
+    padding: 18px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    touch-action: manipulation;
+  }
+  .mode-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .mode-btn-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .mode-btn-desc { font-size: 11px; line-height: 1.5; opacity: 0.8; }
+  .mode-btn.collect:hover, .mode-btn.collect.selected {
+    border-color: var(--green); background: var(--green-dim); color: var(--green);
+  }
+  .mode-btn.validate:hover, .mode-btn.validate.selected {
+    border-color: var(--blue); background: var(--blue-dim); color: var(--blue);
+  }
+
+  /* ── Validate screen ── */
+  .validate-scan-input {
+    font-size: 20px;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+    padding: 16px 60px 16px 16px;
+    text-align: center;
+  }
+  .match-banner {
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .match-banner.matched {
+    background: #1a3a20; background: var(--green-dim);
+    border: 2px solid #3fb950; border-color: var(--green);
+    color: #3fb950; color: var(--green);
+  }
+  .match-banner.conflict {
+    background: #3a2a00; background: var(--amber-dim);
+    border: 2px solid #d29922; border-color: var(--amber);
+    color: #d29922; color: var(--amber);
+  }
+  .match-banner.notfound {
+    background: #3a2a00; background: var(--amber-dim);
+    border: 2px solid #d29922; border-color: var(--amber);
+    color: #d29922; color: var(--amber);
+  }
+  .match-ndc {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .match-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .match-actions .btn { flex: 1; min-width: 120px; }
+
+  /* Package availability selector */
+  .pkg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .pkg-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 10px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    touch-action: manipulation;
+    transition: all 0.15s;
+  }
+  .pkg-btn.selected {
+    border-color: var(--blue); background: var(--blue-dim); color: var(--blue);
+  }
+
+  /* ── Notes field ── */
+  textarea#input-notes {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea#input-notes:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+  }
+  textarea#input-notes::placeholder { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo">Rx<span> // </span>Scanner</div>
+    <span id="conn-pill" class="pill pill-green">● ONLINE</span>
+  </div>
+  <div class="header-right">
+    <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light/dark mode">☀ Light</button>
+    <div class="user-badge" id="user-badge" style="display:none">
+      Scanning as <strong id="user-badge-name"></strong>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="change-user-btn" style="display:none" onclick="goSetup()">Change User</button>
+    <button class="btn btn-ghost btn-sm" id="toggle-help-btn" style="display:none" onclick="toggleInstructions()">? Hide Guide</button>
+  </div>
+</header>
+
+<!-- SYNC BANNER -->
+<div id="sync-banner">
+  <div class="sync-msg">
+    ⚠ <strong id="pending-count">0</strong> scan(s) pending sync —
+    <button class="btn btn-amber btn-sm" onclick="syncPending()">Sync Now</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <button class="tab-btn active" data-tab="scan" id="tab-scan" onclick="switchTab('scan')">⬡ Scan</button>
+  <button class="tab-btn" data-tab="validate" id="tab-validate" style="display:none" onclick="switchTab('validate')">✓ Validate</button>
+  <button class="tab-btn" data-tab="records" onclick="switchTab('records')">≡ Records</button>
+</nav>
+
+<main>
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup" class="screen active">
+    <div class="setup-card">
+      <div class="setup-title">// Inventory Scanner</div>
+      <div class="setup-sub">Enter your name to begin. It will be saved for future sessions.</div>
+      <div class="field">
+        <label for="input-name">Your Name</label>
+        <input type="text" id="input-name" placeholder="First Last" autocomplete="off" />
+      </div>
+      <label style="margin-bottom:8px">Select Mode</label>
+      <div class="mode-grid">
+        <button class="mode-btn collect selected" id="mode-btn-collect" onclick="selectMode('collect')">
+          <div class="mode-btn-title">⬡ Collect</div>
+          <div class="mode-btn-desc">Scan and record barcodes by NDC. Standard inventory collection.</div>
+        </button>
+        <button class="mode-btn validate" id="mode-btn-validate" onclick="selectMode('validate')">
+          <div class="mode-btn-title">✓ Validate &amp; Collect</div>
+          <div class="mode-btn-desc">Scan a barcode first — app looks up the NDC from your reference data.</div>
+        </button>
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:16px" onclick="startSession()">Start →</button>
+    </div>
+  </div>
+
+  <!-- VALIDATE SCREEN -->
+  <div id="screen-validate" class="screen">
+
+    <!-- Instructions panel for validate mode -->
+    <div id="validate-instructions-panel" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">✓ Validate &amp; Collect</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
+        Scan any barcode on the item. The app will look up the NDC from your reference data.
+        If matched, you'll proceed to collect all barcodes for that item.
+        If not found, you can enter the NDC manually or skip.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⬡ Scan Item Barcode</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Scan any barcode on the item — GTIN, UPC, or DataMatrix.
+      </div>
+      <div class="input-wrap">
+        <input type="text" id="input-validate-barcode"
+          class="validate-scan-input"
+          placeholder="Scan barcode…"
+          autocomplete="off"
+          onkeydown="onValidateBarcodeKey(event)" />
+        <button class="clear-btn" onclick="clearValidateBarcode()">Clear</button>
+      </div>
+      <div id="validate-result"></div>
+    </div>
+
+  </div>
+
+  <!-- SCAN SCREEN -->
+  <div id="screen-scan" class="screen">
+
+    <!-- Instructions panel -->
+    <div id="instructions-panel">
+      <div class="instructions-title">📋 How to use this app</div>
+      <div class="instructions-grid">
+        <div class="inst-step">
+          <div class="inst-step-num">Step 1</div>
+          <div class="inst-step-title">Enter NDC-11</div>
+          <div class="inst-step-body">Scan or type the <strong>11-digit NDC</strong> from the <strong>purchasing (outer) UOM</strong>. The app will check if this item has been scanned before and look up its characteristics from the master database.</div>
+        </div>
+        <div class="inst-step">
+          <div class="inst-step-num">Step 2</div>
+          <div class="inst-step-title">Confirm Characteristics</div>
+          <div class="inst-step-body">Review the <strong>UOM1, UOM2, and UOM3</strong> values pulled from the master. Click <strong>✓ Correct</strong> if they match the item in hand. If wrong, click <strong>✎ Incorrect — Edit</strong> to enter the right values. If you can't tell, click <strong>⚠ Unable to Confirm</strong>.</div>
+        </div>
+        <div class="inst-step">
+          <div class="inst-step-num">Step 3</div>
+          <div class="inst-step-title">Scan Barcodes</div>
+          <div class="inst-step-body">Select <strong>Purchasing</strong> for the outer/case barcode or <strong>UOM1 (if different)</strong> for the inner/each barcode. Scan with the connected reader or type manually, then press <strong>Enter</strong>. <strong>Scan all barcodes present</strong> — if an item has both a UPC and a DataMatrix (or any other combination), scan each one separately before moving on. Add a note if needed, then click <strong>→ Next Item</strong> when done.</div>
+        </div>
+      </div>
+      <div class="inst-note">
+        💡 <strong>Tip:</strong> If the NDC on the purchasing UOM and the inner UOM (UOM1) are the same, you can scan all barcodes under <strong>Purchasing</strong> — there is no need to use the UOM1 button in that case.
+      </div>
+    </div>
+
+    <div class="scan-layout">
+
+      <!-- LEFT: inputs -->
+      <div>
+
+        <!-- NDC (required) -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">💊 NDC-11 <span style="color:var(--red);font-size:10px;margin-left:4px">REQUIRED</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">This should be the NDC on the <strong style="color:var(--text)">purchasing UOM</strong> without any dashes. 11-digit NDC format is 5-4-2 and a 0 should be added at the front of the segment that is missing a number <span style="color:var(--text-muted)">(example: 12345-678-99 would become 12345-0678-99 and entered as <strong style="color:var(--text)">12345067899</strong> in the field)</span>.</div>
+          <div class="field" style="margin-bottom:0">
+            <div class="input-wrap">
+              <input type="text" id="input-ndc"
+                placeholder="Scan or type NDC-11…"
+                autocomplete="off"
+                oninput="onNdcInput()"
+                onkeydown="onNdcKey(event)"
+                maxlength="14" />
+              <button class="clear-btn" onclick="clearNDC()">Clear</button>
+            </div>
+            <div id="ndc-format-warn">⚠ Looks like NDC-10 — use NDC-11 format</div>
+            <div id="ndc-required-warn">NDC-11 is required before scanning a barcode</div>
+          </div>
+          <div id="ndc-check-box">
+            <span id="ndc-check-icon" class="pulse">◌</span>
+            <span id="ndc-check-msg"></span>
+          </div>
+        </div>
+
+        <!-- E# (optional) — HIDDEN, preserved for future use
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">E# <span style="color:var(--text-dim);font-size:10px;margin-left:4px">OPTIONAL</span></div>
+          <div class="input-wrap">
+            <input type="text" id="input-enum" placeholder="E12345" autocomplete="off" />
+            <button class="clear-btn" onclick="document.getElementById('input-enum').value=''">Clear</button>
+          </div>
+        </div>
+        -->
+        <!-- Hidden E# input kept for data model compatibility -->
+        <input type="hidden" id="input-enum" value="" />
+
+        <!-- Characteristics -->
+        <div class="card" id="char-card" style="margin-bottom:16px">
+          <div class="card-title">
+            ◈ Characteristics
+            <span id="char-status-pill" style="display:none"></span>
+          </div>
+
+          <!-- Loading -->
+          <div class="char-body char-body-loading">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+              <span class="pulse">◌</span> Looking up NDC in master…
+            </div>
+          </div>
+
+          <!-- Loaded: show UOMs for confirmation -->
+          <div class="char-body char-body-loaded">
+            <div class="uom-grid">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val" id="char-uom1-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2</div>
+                <div class="uom-val" id="char-uom2-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3</div>
+                <div class="uom-val" id="char-uom3-display">—</div>
+              </div>
+            </div>
+            <!-- Temperature control & hazmat flags -->
+            <div class="flag-row" id="flags-loaded">
+              <div class="flag-box" id="flag-temp-box">
+                <div class="uom-label">🌡 Temp Controlled?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-temp-yes" onclick="setFlag('isTempControl', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-temp-no"  onclick="setFlag('isTempControl', false)">No</button>
+                </div>
+              </div>
+              <div class="flag-box" id="flag-hazmat-box">
+                <div class="uom-label">☣ Hazardous?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-hazmat-yes" onclick="setFlag('isHazmat', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-hazmat-no"  onclick="setFlag('isHazmat', false)">No</button>
+                </div>
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="confirmCharacteristics()">✓ Correct</button>
+              <button class="btn btn-ghost btn-sm" onclick="enterEditMode()">✎ Incorrect — Edit</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Not found in master -->
+          <div class="char-body char-body-notfound">
+            <div class="char-notfound-banner" style="margin-bottom:12px">
+              ○ NDC not found in master — enter UOMs manually
+            </div>
+            <div class="uom-grid" style="margin-bottom:12px">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val empty">n/a</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2</div>
+                <input type="text" id="char-uom2-manual" placeholder="e.g. 10" autocomplete="off" style="margin-top:4px" />
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3</div>
+                <input type="text" id="char-uom3-manual" placeholder="e.g. 6" autocomplete="off" style="margin-top:4px" />
+              </div>
+            </div>
+            <!-- Temperature control & hazmat flags (manual entry) -->
+            <div class="flag-row">
+              <div class="flag-box" id="flag-temp-box-nf">
+                <div class="uom-label">🌡 Temp Controlled?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-temp-yes-nf" onclick="setFlag('isTempControl', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-temp-no-nf"  onclick="setFlag('isTempControl', false)">No</button>
+                </div>
+              </div>
+              <div class="flag-box" id="flag-hazmat-box-nf">
+                <div class="uom-label">☣ Hazardous?</div>
+                <div class="yn-group">
+                  <button class="yn-btn yn-yes" id="flag-hazmat-yes-nf" onclick="setFlag('isHazmat', true)">Yes</button>
+                  <button class="yn-btn yn-no"  id="flag-hazmat-no-nf"  onclick="setFlag('isHazmat', false)">No</button>
+                </div>
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="saveManualUOMs()">✓ Save UOMs</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Edit mode: master values wrong -->
+          <div class="char-body char-body-edit">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:10px">
+              Enter corrected values — UOM1 is read-only from master
+            </div>
+            <div class="uom-grid" style="margin-bottom:12px">
+              <div class="uom-box">
+                <div class="uom-label">UOM1</div>
+                <div class="uom-val" id="char-uom1-edit-display">—</div>
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM2 <span style="color:var(--text-dim)">edit</span></div>
+                <input type="text" id="char-uom2-edit" placeholder="Enter UOM2" autocomplete="off" style="margin-top:4px" />
+              </div>
+              <div class="uom-box">
+                <div class="uom-label">UOM3 <span style="color:var(--text-dim)">edit</span></div>
+                <input type="text" id="char-uom3-edit" placeholder="Enter UOM3" autocomplete="off" style="margin-top:4px" />
+              </div>
+            </div>
+            <div class="char-action-row">
+              <button class="btn btn-primary btn-sm" onclick="saveEditedUOMs()">✓ Save Corrections</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelEdit()">✕ Cancel</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="unableToConfirm()">⚠ Unable to Confirm</button>
+            </div>
+          </div>
+
+          <!-- Confirmed state -->
+          <div class="char-body char-body-confirmed" style="display:none">
+            <div class="char-confirmed-banner">
+              <span>✓</span>
+              <span id="char-confirmed-summary"></span>
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Edit</button>
+            </div>
+          </div>
+
+          <!-- Unconfirmed state -->
+          <div class="char-body char-body-unconfirmed" style="display:none">
+            <div class="char-unconfirmed-banner">
+              <span>⚠</span>
+              <span>Marked as unable to confirm — UOMs not recorded</span>
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="reopenCharacteristics()">Retry</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barcode -->
+        <div class="card">
+          <div class="card-title">⬡ Barcode</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">
+            If there is no inner NDC (i.e., the NDC is the same on the purchasing UOM and UOM1), you can scan everything under <strong style="color:var(--text)">Purchasing</strong>.
+          </div>
+          <div class="btype-grid" style="grid-template-columns:1fr 1fr">
+            <button class="btype-btn" id="btype-outer" onclick="selectBarcodeType('outer')">
+              Purchasing<br><span style="font-size:9px;opacity:0.7">OUTER / CASE</span>
+            </button>
+            <button class="btype-btn" id="btype-inner" onclick="selectBarcodeType('inner')">
+              UOM1 (if different)<br><span style="font-size:9px;opacity:0.7">INNER / EACH</span>
+            </button>
+          </div>
+          <!-- Other barcode type — HIDDEN, preserved for future use
+          <button class="btype-btn" id="btype-other" onclick="selectBarcodeType('other')">
+            Other<br><span style="font-size:9px;opacity:0.7">BARCODE TYPE</span>
+          </button>
+          -->
+          <div class="input-wrap">
+            <input type="text" id="input-barcode"
+              placeholder="Select type above, then scan…"
+              disabled autocomplete="off"
+              onkeydown="onBarcodeKey(event)" />
+            <button class="clear-btn" onclick="clearBarcode()">Clear</button>
+          </div>
+          <div id="scan-feedback"></div>
+          <div id="gtin-display" style="display:none;margin-top:10px;padding:10px 14px;background:var(--blue-dim);border:1px solid var(--blue);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--blue);line-height:1.6"></div>
+          <!-- Notes -->
+          <div style="margin-top:14px">
+            <label for="input-notes" style="margin-bottom:6px">Notes <span style="color:var(--text-dim);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">optional</span></label>
+            <textarea id="input-notes" placeholder="Any comments about this item or scan…"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: stats + recent -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">Session</div>
+          <div class="counter-big" id="session-count">0</div>
+          <div class="counter-label">Scans This Session</div>
+          <hr class="divider">
+          <div class="scan-meta">
+            <div>NDC: <span class="val" id="stat-ndc">—</span></div>
+            <div>Last scan: <span class="val" id="stat-last">—</span></div>
+          </div>
+          <button class="btn btn-amber btn-full" id="next-item-btn" onclick="nextItem()" style="font-size:15px;padding:14px 20px;margin-top:8px">
+            → Next Item
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Scans</div>
+          <div class="mini-list" id="mini-list">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 0">
+              No scans yet this session.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end scan-layout -->
+  </div><!-- end screen-scan -->
+
+  <!-- RECORDS SCREEN -->
+  <div id="screen-records" class="screen">
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-val" id="metric-total">0</div>
+        <div class="metric-label">Total Scans</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="metric-ndcs">0</div>
+        <div class="metric-label">Unique NDCs</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="metric-session">0</div>
+        <div class="metric-label">This Session</div>
+      </div>
+    </div>
+
+    <div class="records-toolbar">
+      <input type="text" id="filter-input" placeholder="Filter by NDC, barcode, E#, name…" oninput="renderRecordsTable()" />
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadRecords()">↻ Refresh</button>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('timestamp')">Time</th>
+            <th onclick="sortBy('ndc')">NDC-11</th>
+            <th onclick="sortBy('barcode_type')">Type</th>
+            <th onclick="sortBy('barcode_value')">Barcode</th>
+            <th onclick="sortBy('gtin')">GTIN</th>
+            <th onclick="sortBy('symbology')">Symbology</th>
+            <th onclick="sortBy('scanned_by')">Scanned By</th>
+            <th onclick="sortBy('notes')">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="records-tbody">
+          <tr class="empty-row"><td colspan="6">Loading records…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Config ──
+const SUPABASE_URL = 'https://lughgsifdqevnyjzgfxi.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1Z2hnc2lmZHFldm55anpnZnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MTk5NjQsImV4cCI6MjA5NDQ5NTk2NH0.sBfmP5vY171UhsPpa6Kv8vHt6NyMkuhSMTddBqF8Q5Q';
+
+const sbHeaders = () => ({
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+});
+
+// ── State ──
+let userName = '';
+let currentMode = 'collect';          // 'collect' | 'validate'
+let ndcConfirmed = '';
+let selectedBarcodeType = '';
+let sessionScans = [];
+let allRecords = [];
+let sortCol = 'timestamp';
+let sortDir = -1;
+let ndcDebounceTimer = null;
+let refData = [];                     // preloaded ndc_gtin_map records
+let validateState = {
+  rawBarcode:          null,
+  parsedGtin:          null,
+  parsedUpc:           null,
+  matchedNdc:          null,
+  matchStatus:         null,  // 'matched' | 'conflict' | 'notfound'
+  packageAvailability: null,  // 'both' | 'inner_only' | 'outer_only'
+  scanMode:            null,  // final mode string for scans table
+};
+
+// UOM / characteristics state
+let uomState = {
+  status: 'idle',    // idle | loading | loaded | notfound | edit | confirmed | unconfirmed
+  uom1: null,
+  uom2: null,
+  uom3: null,
+  isTempControl: null,   // true | false | null (unknown)
+  isHazmat: null,        // true | false | null (unknown)
+  source: null           // 'master' | 'corrected' | 'manual' | 'unconfirmed'
+};
+
+// ── Theme toggle ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('rxscanner_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-toggle-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+}
+
+// ── Instructions toggle ──
+function toggleInstructions() {
+  const panel = document.getElementById('instructions-panel');
+  const btn   = document.getElementById('toggle-help-btn');
+  const hidden = panel.classList.toggle('hidden');
+  localStorage.setItem('rxscanner_hide_instructions', hidden ? '1' : '');
+  btn.textContent = hidden ? '? Show Guide' : '? Hide Guide';
+}
+
+// ── Init ──
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('rxscanner_name');
+  if (saved) document.getElementById('input-name').value = saved;
+  // Restore theme preference
+  if (localStorage.getItem('rxscanner_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    const tb = document.getElementById('theme-toggle-btn');
+    if (tb) tb.textContent = '🌙 Dark';
+  }
+  // Restore instructions preference
+  if (localStorage.getItem('rxscanner_hide_instructions') === '1') {
+    document.getElementById('instructions-panel').classList.add('hidden');
+    const btn = document.getElementById('toggle-help-btn');
+    if (btn) btn.textContent = '? Show Guide';
+  }
+  updateOnlineStatus();
+  updateSyncBanner();
+});
+window.addEventListener('online',  () => { updateOnlineStatus(); updateSyncBanner(); });
+window.addEventListener('offline', () => updateOnlineStatus());
+
+function updateOnlineStatus() {
+  const p = document.getElementById('conn-pill');
+  if (navigator.onLine) {
+    p.textContent = '● ONLINE'; p.className = 'pill pill-green';
+  } else {
+    p.textContent = '○ OFFLINE'; p.className = 'pill pill-red';
+  }
+}
+
+function updateSyncBanner() {
+  const pending = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  const banner  = document.getElementById('sync-banner');
+  document.getElementById('pending-count').textContent = pending.length;
+  banner.classList.toggle('visible', pending.length > 0 && navigator.onLine);
+}
+
+// ── Setup ──
+document.getElementById('input-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startSession();
+});
+
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-btn-collect').classList.toggle('selected', mode === 'collect');
+  document.getElementById('mode-btn-validate').classList.toggle('selected', mode === 'validate');
+}
+
+function startSession() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { document.getElementById('input-name').focus(); return; }
+  userName = name;
+  localStorage.setItem('rxscanner_name', name);
+  document.getElementById('user-badge-name').textContent = name;
+  document.getElementById('user-badge').style.display = '';
+  document.getElementById('change-user-btn').style.display = '';
+  const helpBtn = document.getElementById('toggle-help-btn');
+  if (helpBtn) helpBtn.style.display = '';
+  document.getElementById('main-nav').style.display = '';
+
+  if (currentMode === 'validate') {
+    document.getElementById('tab-validate').style.display = '';
+    document.getElementById('tab-scan').style.display = 'none';
+    switchTab('validate');
+    loadRefData();
+    setTimeout(() => document.getElementById('input-validate-barcode').focus(), 100);
+  } else {
+    document.getElementById('tab-validate').style.display = 'none';
+    document.getElementById('tab-scan').style.display = '';
+    switchTab('scan');
+    setTimeout(() => document.getElementById('input-ndc').focus(), 100);
+  }
+}
+
+function goSetup() {
+  document.getElementById('main-nav').style.display = 'none';
+  document.getElementById('user-badge').style.display = 'none';
+  document.getElementById('change-user-btn').style.display = 'none';
+  showScreen('setup');
+  resetScanState();
+}
+
+// ── Navigation ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  showScreen(tab);
+  if (tab === 'records') loadRecords();
+  if (tab === 'validate') setTimeout(() => document.getElementById('input-validate-barcode').focus(), 100);
+}
+
+// ── NDC logic ──
+function onNdcInput() {
+  const el = document.getElementById('input-ndc');
+  const raw = el.value.replace(/[^0-9\-]/g, ''); // allow digits and dashes
+  el.value = raw;
+
+  const digits = raw.replace(/\D/g, '');
+
+  // Format warnings
+  document.getElementById('ndc-format-warn').classList.toggle('visible', digits.length === 10);
+  document.getElementById('ndc-required-warn').classList.remove('visible');
+  el.classList.remove('invalid');
+
+  // Reset confirmed state & barcode when NDC changes
+  ndcConfirmed = '';
+  lockBarcode();
+  hideNdcCheck();
+  selectedBarcodeType = '';
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+
+  // Debounce: fire check after 600ms of no typing, only for 11-digit NDC
+  clearTimeout(ndcDebounceTimer);
+  if (digits.length === 11) {
+    ndcDebounceTimer = setTimeout(() => confirmNDC(raw), 600);
+  }
+}
+
+function onNdcKey(e) {
+  if (e.key === 'Enter') {
+    clearTimeout(ndcDebounceTimer);
+    const raw = document.getElementById('input-ndc').value.trim();
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 11) {
+      confirmNDC(raw);
+    } else {
+      document.getElementById('input-ndc').classList.add('invalid');
+      document.getElementById('ndc-required-warn').textContent = 'NDC-11 must be 11 digits';
+      document.getElementById('ndc-required-warn').classList.add('visible');
+    }
+  }
+}
+
+async function confirmNDC(rawValue) {
+  ndcConfirmed = rawValue;
+  document.getElementById('stat-ndc').textContent = rawValue;
+
+  if (!navigator.onLine) {
+    // offline — skip check, allow scanning; characteristics unavailable
+    hideNdcCheck();
+    resetCharacteristics();
+    unlockBarcode();
+    return;
+  }
+
+  // Show checking state
+  const box  = document.getElementById('ndc-check-box');
+  const icon = document.getElementById('ndc-check-icon');
+  const msg  = document.getElementById('ndc-check-msg');
+  box.className  = 'checking';
+  icon.className = 'pulse';
+  icon.textContent = '◌';
+  msg.textContent  = 'Checking for prior scans of this NDC…';
+
+  try {
+    // Fetch all records for this NDC so we can show barcode types already logged
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scans?ndc=eq.${encodeURIComponent(rawValue)}&order=created_at.desc`,
+      { headers: sbHeaders() }
+    );
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      const latest = data[0];
+      const dt = new Date(latest.timestamp || latest.created_at);
+      const when = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+        ' at ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+      // Collect unique barcode types that have been scanned
+      const typeCounts = {};
+      data.forEach(r => {
+        if (r.barcode_type) {
+          typeCounts[r.barcode_type] = (typeCounts[r.barcode_type] || 0) + 1;
+        }
+      });
+      const typeLabels = { outer: 'Outer', inner: 'Inner', other: 'Other' };
+      const typePills = Object.entries(typeCounts)
+        .map(([t, n]) => `<span style="display:inline-block;padding:1px 7px;border-radius:10px;border:1px solid var(--amber);font-size:10px;margin:0 3px 0 0">${typeLabels[t] || t}×${n}</span>`)
+        .join('');
+
+      box.className    = 'found';
+      icon.className   = '';
+      icon.textContent = '⚠';
+      msg.innerHTML    = `<strong>Already scanned</strong> — last recorded ${when} by <strong>${latest.scanned_by || 'unknown'}</strong>`
+        + `<div style="margin-top:6px;font-size:11px;opacity:0.85">Barcodes logged: ${typePills || 'none recorded'}</div>`;
+    } else {
+      box.className    = 'clear';
+      icon.className   = '';
+      icon.textContent = '✓';
+      msg.textContent  = 'NDC not previously scanned — good to go';
+      // Auto-dismiss after 3s
+      setTimeout(() => { if (box.className === 'clear') hideNdcCheck(); }, 3000);
+    }
+  } catch {
+    hideNdcCheck();
+  }
+
+  // Also trigger characteristics lookup (runs in parallel — already have ndcConfirmed set)
+  lookupCharacteristics(ndcConfirmed);
+  unlockBarcode();
+}
+
+function hideNdcCheck() {
+  const box = document.getElementById('ndc-check-box');
+  box.className = '';
+  box.style.display = 'none';
+  setTimeout(() => box.style.display = '', 10);
+}
+
+function clearNDC() {
+  document.getElementById('input-ndc').value = '';
+  document.getElementById('input-ndc').classList.remove('invalid');
+  document.getElementById('ndc-format-warn').classList.remove('visible');
+  document.getElementById('ndc-required-warn').classList.remove('visible');
+  ndcConfirmed = '';
+  hideNdcCheck();
+  resetCharacteristics();
+  lockBarcode();
+  selectedBarcodeType = '';
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+  clearTimeout(ndcDebounceTimer);
+  document.getElementById('input-ndc').focus();
+}
+
+// ── Barcode type ──
+function selectBarcodeType(type) {
+  if (!ndcConfirmed) {
+    document.getElementById('ndc-required-warn').textContent = 'Enter and confirm NDC-11 before selecting barcode type';
+    document.getElementById('ndc-required-warn').classList.add('visible');
+    document.getElementById('input-ndc').focus();
+    return;
+  }
+  selectedBarcodeType = type;
+  document.querySelectorAll('.btype-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btype-' + type).classList.add('selected');
+  unlockBarcode();
+  document.getElementById('input-barcode').focus();
+  hideFeedback();
+}
+
+function lockBarcode() {
+  const bi = document.getElementById('input-barcode');
+  bi.disabled = true;
+  bi.value = '';
+  bi.placeholder = 'Select type above, then scan…';
+}
+
+function unlockBarcode() {
+  if (!ndcConfirmed || !selectedBarcodeType) return;
+  const bi = document.getElementById('input-barcode');
+  bi.disabled = false;
+  bi.placeholder = 'Scan or type barcode, then press Enter…';
+}
+
+// ── Reference data loader ──
+async function loadRefData() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ndc_gtin_map?select=ndc,scan_id,id_type&limit=10000`,
+      { headers: sbHeaders() }
+    );
+    refData = await res.json();
+    console.log(`Loaded ${refData.length} reference records`);
+  } catch(e) {
+    console.error('Failed to load reference data', e);
+    refData = [];
+  }
+}
+
+// ── Validate mode ──
+function onValidateBarcodeKey(e) {
+  if (e.key === 'Enter') processValidateScan();
+}
+
+function clearValidateBarcode() {
+  document.getElementById('input-validate-barcode').value = '';
+  document.getElementById('validate-result').innerHTML = '';
+  validateState = { rawBarcode: null, parsedGtin: null, parsedUpc: null,
+    matchedNdc: null, matchStatus: null, packageAvailability: null, scanMode: null };
+  document.getElementById('input-validate-barcode').focus();
+}
+
+function processValidateScan() {
+  const raw = document.getElementById('input-validate-barcode').value.trim();
+  if (!raw) return;
+
+  const parsed = parseBarcode(raw);
+  validateState.rawBarcode  = raw;
+  validateState.parsedGtin  = parsed.gtin;
+  // For UPC matching: if 12-digit clean value
+  validateState.parsedUpc   = (parsed.upcValid && parsed.cleanValue.length === 12)
+    ? parsed.cleanValue : null;
+
+  // Search refData in memory
+  let matchedNdcs = new Set();
+
+  if (parsed.gtin) {
+    // Match GTIN1 and GTIN2 (both are 14-digit normalized GTINs at different packaging levels)
+    refData.filter(r => (r.id_type === 'GTIN1' || r.id_type === 'GTIN2') && r.scan_id === parsed.gtin)
+           .forEach(r => matchedNdcs.add(r.ndc));
+  }
+  if (validateState.parsedUpc) {
+    refData.filter(r => r.id_type === 'upc' && r.scan_id === validateState.parsedUpc)
+           .forEach(r => matchedNdcs.add(r.ndc));
+  }
+
+  const ndcList = [...matchedNdcs];
+
+  if (ndcList.length === 1) {
+    validateState.matchedNdc   = ndcList[0];
+    validateState.matchStatus  = 'matched';
+    validateState.scanMode     = 'validate_matched';
+    showValidateMatched(ndcList[0], parsed);
+  } else if (ndcList.length > 1) {
+    validateState.matchStatus  = 'conflict';
+    validateState.scanMode     = 'validate_conflict';
+    showValidateConflict(ndcList, parsed);
+  } else {
+    validateState.matchStatus  = 'notfound';
+    validateState.scanMode     = 'validate_not_found';
+    showValidateNotFound(parsed);
+  }
+}
+
+function showValidateMatched(ndc, parsed) {
+  const gtinLine = parsed.gtin
+    ? `<div style="font-size:11px;opacity:0.8;margin-top:2px">GTIN: ${parsed.gtin} · ${parsed.symbology}</div>`
+    : '';
+  document.getElementById('validate-result').innerHTML = `
+    <div class="match-banner matched">
+      <div class="match-ndc">✓ ${ndc}</div>
+      ${gtinLine}
+      <div class="match-actions">
+        <button class="btn btn-primary btn-sm" onclick="proceedToCollect('${ndc}')">
+          Collect Barcodes →
+        </button>
+      </div>
+    </div>`;
+}
+
+function showValidateConflict(ndcs, parsed) {
+  const list = ndcs.map(n => `<div>• ${n}</div>`).join('');
+  document.getElementById('validate-result').innerHTML = `
+    <div class="match-banner conflict">
+      <div style="font-weight:600;margin-bottom:6px">⚠ Conflicting data — multiple NDCs matched</div>
+      <div style="font-size:12px;margin-bottom:10px">${list}</div>
+      ${packageAvailabilitySelector()}
+      <div class="match-actions">
+        <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)"
+          onclick="proceedToCollectManual()">Enter NDC Manually</button>
+        <button class="btn btn-ghost btn-sm" onclick="proceedToCollectManual(true)">Skip NDC</button>
+      </div>
+    </div>`;
+}
+
+function showValidateNotFound(parsed) {
+  document.getElementById('validate-result').innerHTML = `
+    <div class="match-banner notfound">
+      <div style="font-weight:600;margin-bottom:6px">⚠ Not found in reference data</div>
+      <div style="font-size:12px;margin-bottom:10px">What packaging do you have available?</div>
+      ${packageAvailabilitySelector()}
+      <div class="match-actions">
+        <button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:var(--amber)"
+          onclick="proceedToCollectManual()">Enter NDC Manually</button>
+        <button class="btn btn-ghost btn-sm" onclick="proceedToCollectManual(true)">Skip NDC</button>
+      </div>
+    </div>`;
+}
+
+function packageAvailabilitySelector() {
+  return `
+    <div style="font-size:12px;color:inherit;opacity:0.8;margin-bottom:6px">What packaging do you have available?</div>
+    <div class="pkg-grid">
+      <button class="pkg-btn" id="pkg-both"       onclick="selectPackage('both')">Both</button>
+      <button class="pkg-btn" id="pkg-inner_only" onclick="selectPackage('inner_only')">Inner Only</button>
+      <button class="pkg-btn" id="pkg-outer_only" onclick="selectPackage('outer_only')">Outer Only</button>
+    </div>`;
+}
+
+function selectPackage(val) {
+  validateState.packageAvailability = val;
+  ['both','inner_only','outer_only'].forEach(v => {
+    const b = document.getElementById('pkg-' + v);
+    if (b) b.classList.toggle('selected', v === val);
+  });
+}
+
+function proceedToCollect(ndc) {
+  validateState.scanMode = 'validate_matched';
+  // Switch to scan tab with NDC pre-filled
+  document.getElementById('tab-scan').style.display = '';
+  switchTab('scan');
+  // Pre-fill NDC and trigger confirmation
+  document.getElementById('input-ndc').value = ndc;
+  clearTimeout(ndcDebounceTimer);
+  confirmNDC(ndc);
+  // Pre-fill the barcode value that matched
+  if (validateState.rawBarcode) {
+    const parsed = parseBarcode(validateState.rawBarcode);
+    // Select purchasing type by default
+    selectBarcodeType('outer');
+    document.getElementById('input-barcode').value = parsed.cleanValue;
+  }
+}
+
+function proceedToCollectManual(skipNdc = false) {
+  validateState.scanMode = skipNdc ? 'validate_not_found' : 'validate_manual';
+  document.getElementById('tab-scan').style.display = '';
+  switchTab('scan');
+  if (!skipNdc) {
+    setTimeout(() => document.getElementById('input-ndc').focus(), 150);
+  }
+  if (validateState.rawBarcode) {
+    const parsed = parseBarcode(validateState.rawBarcode);
+    selectBarcodeType('outer');
+    document.getElementById('input-barcode').value = parsed.cleanValue;
+  }
+}
+
+// ── GS1 / barcode parsing ──
+
+// AIM ID prefix → human-readable symbology name
+const AIM_SYMBOLOGY = {
+  ']C1': 'GS1-128',
+  ']e0': 'GS1 DataMatrix',
+  ']e1': 'GS1 DataMatrix',
+  ']e2': 'GS1 DataMatrix',
+  ']d1': 'GS1 DataBar',
+  ']d2': 'GS1 DataBar',
+  ']d3': 'GS1 DataBar',
+  ']E0': 'EAN-13',
+  ']E3': 'EAN-8',
+  ']E4': 'EAN-13 (addon)',
+  ']A0': 'UPC-A',
+  ']A1': 'UPC-A',
+  ']A2': 'UPC-A',
+  ']A3': 'UPC-E',
+  ']A4': 'UPC-E',
+  ']A5': 'UPC-A (addon)',
+  ']Q1': 'QR Code',
+  ']Q3': 'QR Code',
+  ']I1': 'ITF-14',
+  ']F1': 'Codabar',
+  ']G0': 'Code 128',
+  ']G1': 'Code 128',
+};
+
+// GS1 check digit validation (mod-10 used by all GTIN lengths)
+function gs1CheckDigit(digits) {
+  const d = digits.split('').map(Number);
+  const check = d.pop();
+  let sum = 0;
+  d.reverse().forEach((v, i) => { sum += i % 2 === 0 ? v * 3 : v; });
+  return (10 - (sum % 10)) % 10 === check;
+}
+
+// Normalize any GTIN variant to 14 digits by zero-padding
+function toGTIN14(digits) {
+  if ([8, 12, 13, 14].includes(digits.length)) {
+    return digits.padStart(14, '0');
+  }
+  return null;
+}
+
+// GS1 element string parser — walks through AI-encoded content
+// Handles GS1-128, GS1 DataMatrix, GS1 DataBar
+// FNC1 in first position is already stripped by the AIM ID; GS () used as separator
+// Returns an object of { AI: value } pairs found in the string
+function parseGS1Elements(raw) {
+  // Normalize separators:
+  // \x1D = real GS character, "/" = scanner-configured replacement for GS
+  // Both are treated as AI field separators
+  let s = raw.replace(/[\/\x1C\x1D\x1E\x1F]/g, '\x1D');
+  // Strip any leading separator
+  s = s.replace(/^\x1D/, '');
+
+  const GS = '\x1D';
+  const result = {};
+
+  // Fixed-length AIs: AI key -> exact number of data digits that follow
+  const FIXED = {
+    '00': 18, '01': 14, '02': 14,
+    '03': 14, '04': 16,
+    '11': 6,  '12': 6,  '13': 6,  '14': 6,  '15': 6,
+    '16': 6,  '17': 6,  '18': 6,  '19': 6,
+    '20': 2,
+    '31': 10, '32': 10, '33': 10, '34': 10, '35': 10, '36': 10,
+    '41': 13,
+  };
+
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === GS) { i++; continue; }
+
+    // Try 2-digit AI first (most common for GTIN), then 3, then 4
+    let matched = false;
+    for (const aiLen of [2, 3, 4]) {
+      const ai = s.substr(i, aiLen);
+      if (!/^\d+$/.test(ai)) continue;
+
+      if (FIXED[ai] !== undefined) {
+        // Fixed-length: grab exact digits
+        const val = s.substr(i + aiLen, FIXED[ai]);
+        result[ai] = val;
+        i += aiLen + FIXED[ai];
+        matched = true;
+        break;
+      } else if (aiLen >= 3) {
+        // Variable-length: read until next GS or end of string
+        const gsPos = s.indexOf(GS, i + aiLen);
+        const val = gsPos === -1 ? s.slice(i + aiLen) : s.slice(i + aiLen, gsPos);
+        result[ai] = val;
+        i += aiLen + val.length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) i++; // skip unrecognised character
+  }
+  return result;
+}
+
+// Determine if an AIM ID signals GS1-encoded content
+function isGS1AimId(aimId) {
+  if (!aimId) return false;
+  // GS1-128: ]C1, GS1 DataMatrix: ]e0/1/2, GS1 DataBar: ]d1/2/3
+  return /^\](C1|e[012]|d[123])$/.test(aimId);
+}
+
+function parseBarcode(raw) {
+  let aimId      = null;
+  let symbology  = 'Connected reader';
+  let cleanValue = raw;
+  let gtin       = null;
+  let gtinValid  = null;
+  let upcValid   = null;
+
+  // ── 1. Detect and strip AIM ID (]XX — letter + digit) ──
+  const aimMatch = raw.match(/^(\][A-Za-z]\d)/);
+  if (aimMatch) {
+    aimId      = aimMatch[1];
+    cleanValue = raw.slice(3);
+    symbology  = AIM_SYMBOLOGY[aimId] || ('AIM:' + aimId);
+  }
+
+  // ── 2. GS1 symbologies — parse element strings, extract AI (01) for GTIN ──
+  if (isGS1AimId(aimId)) {
+    const elements = parseGS1Elements(cleanValue);
+    const rawGtin = elements['01'];
+    if (rawGtin && rawGtin.length === 14 && /^\d{14}$/.test(rawGtin)) {
+      gtin      = rawGtin;
+      gtinValid = gs1CheckDigit(rawGtin);
+    }
+  }
+
+  // ── 3. Plain numeric barcodes (no AIM or non-GS1 AIM): GTIN-8/12/13/14 ──
+  if (!gtin && /^\d+$/.test(cleanValue)) {
+    const len = cleanValue.length;
+    if ([8, 12, 13, 14].includes(len)) {
+      gtin      = toGTIN14(cleanValue);
+      gtinValid = gs1CheckDigit(cleanValue);
+      if (len === 12 && gtinValid) {
+        upcValid = true;
+      }
+    }
+  }
+
+  // ── 4. AIM-confirmed UPC-A (]A prefix) ──
+  if (aimId && aimId.startsWith(']A') && /^\d{12}$/.test(cleanValue)) {
+    gtin      = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+    upcValid  = gtinValid;
+  }
+
+  // ── 5. AIM-confirmed EAN-13 ──
+  if ((aimId === ']E0' || aimId === ']E4') && /^\d{13}$/.test(cleanValue)) {
+    gtin      = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  // ── 6. AIM-confirmed EAN-8 ──
+  if (aimId === ']E3' && /^\d{8}$/.test(cleanValue)) {
+    gtin      = toGTIN14(cleanValue);
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  // ── 7. ITF-14 ──
+  if (aimId === ']I1' && /^\d{14}$/.test(cleanValue)) {
+    gtin      = cleanValue;
+    gtinValid = gs1CheckDigit(cleanValue);
+  }
+
+  return { aimId, symbology, cleanValue, gtin, gtinValid, upcValid };
+}
+
+// ── Characteristics / UOM ──
+
+function setCharState(state) {
+  uomState.status = state;
+  const card = document.getElementById('char-card');
+  card.className = 'card';  // reset
+  // Show/hide bodies via state class on card
+  const bodies = ['loading','loaded','notfound','edit','confirmed','unconfirmed'];
+  bodies.forEach(s => {
+    const el = card.querySelector('.char-body-' + s);
+    if (el) el.style.display = (s === state) ? '' : 'none';
+  });
+  card.classList.add('visible');
+}
+
+function resetCharacteristics() {
+  uomState = { status: 'idle', uom1: null, uom2: null, uom3: null, isTempControl: null, isHazmat: null, source: null };
+  const card = document.getElementById('char-card');
+  card.classList.remove('visible');
+  // hide all bodies
+  card.querySelectorAll('.char-body').forEach(el => el.style.display = 'none');
+  // also hide char-body-confirmed and char-body-unconfirmed (not in .char-body)
+  const extra = ['char-body-confirmed','char-body-unconfirmed'];
+  extra.forEach(cls => { const el = card.querySelector('.' + cls); if(el) el.style.display = 'none'; });
+}
+
+async function lookupCharacteristics(ndcValue) {
+  resetCharacteristics();
+  setCharState('loading');
+
+  const digits = ndcValue.replace(/\D/g,'');
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ndc_master?pkg=eq.${encodeURIComponent(ndcValue)}&limit=1`,
+      { headers: sbHeaders() }
+    );
+    let data = await res.json();
+
+    // If no match with dashes, try digits-only
+    if ((!data || data.length === 0) && digits !== ndcValue) {
+      const res2 = await fetch(
+        `${SUPABASE_URL}/rest/v1/ndc_master?pkg=eq.${encodeURIComponent(digits)}&limit=1`,
+        { headers: sbHeaders() }
+      );
+      data = await res2.json();
+    }
+
+    if (data && data.length > 0) {
+      const row = data[0];
+      uomState.uom1 = row.uom1 || null;
+      uomState.uom2 = row.uom2 || null;
+      uomState.uom3 = row.uom3 || null;
+      // Read flags — stored as boolean in ndc_master; null = not set
+      uomState.isTempControl = row.is_temperature_control != null ? Boolean(row.is_temperature_control) : null;
+      uomState.isHazmat      = row.is_hazmat != null ? Boolean(row.is_hazmat) : null;
+
+      // Populate display boxes
+      const fmt = v => v || '<span class="empty">—</span>';
+      document.getElementById('char-uom1-display').innerHTML = fmt(uomState.uom1);
+      document.getElementById('char-uom2-display').innerHTML = fmt(uomState.uom2);
+      document.getElementById('char-uom3-display').innerHTML = fmt(uomState.uom3);
+      document.getElementById('char-uom1-edit-display').textContent = uomState.uom1 || '—';
+
+      // Pre-populate flag buttons from master data
+      populateFlagButtons();
+
+      setCharState('loaded');
+    } else {
+      setCharState('notfound');
+    }
+  } catch(e) {
+    console.error('Characteristics lookup failed', e);
+    setCharState('notfound');
+  }
+}
+
+function confirmCharacteristics() {
+  uomState.source = 'master';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function enterEditMode() {
+  document.getElementById('char-uom2-edit').value = uomState.uom2 || '';
+  document.getElementById('char-uom3-edit').value = uomState.uom3 || '';
+  setCharState('edit');
+  document.getElementById('char-uom2-edit').focus();
+}
+
+function cancelEdit() {
+  setCharState('loaded');
+}
+
+function saveEditedUOMs() {
+  const u2 = document.getElementById('char-uom2-edit').value.trim();
+  const u3 = document.getElementById('char-uom3-edit').value.trim();
+  uomState.uom2 = u2 || null;
+  uomState.uom3 = u3 || null;
+  uomState.source = 'corrected';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function saveManualUOMs() {
+  const u2 = document.getElementById('char-uom2-manual').value.trim();
+  const u3 = document.getElementById('char-uom3-manual').value.trim();
+  uomState.uom2 = u2 || null;
+  uomState.uom3 = u3 || null;
+  uomState.source = 'manual';
+  uomState.status = 'confirmed';
+  showConfirmedBanner();
+}
+
+function showConfirmedBanner() {
+  const parts = [];
+  if (uomState.uom1) parts.push(`UOM1: ${uomState.uom1}`);
+  if (uomState.uom2) parts.push(`UOM2: ${uomState.uom2}`);
+  if (uomState.uom3) parts.push(`UOM3: ${uomState.uom3}`);
+  if (uomState.isTempControl === true)  parts.push('🌡 Temp Controlled');
+  if (uomState.isTempControl === false) parts.push('✓ Not Temp Controlled');
+  if (uomState.isHazmat === true)       parts.push('☣ Hazardous');
+  if (uomState.isHazmat === false)      parts.push('✓ Not Hazardous');
+  const suffix = uomState.source === 'corrected' ? ' (corrected)'
+               : uomState.source === 'manual'    ? ' (manual)'
+               : '';
+  document.getElementById('char-confirmed-summary').textContent =
+    (parts.length ? parts.join(' · ') : 'No UOM data') + suffix;
+
+  // Hide all body sections, show confirmed banner
+  const card = document.getElementById('char-card');
+  card.querySelectorAll('[class*="char-body"]').forEach(el => el.style.display = 'none');
+  card.querySelector('.char-body-confirmed').style.display = '';
+  uomState.status = 'confirmed';
+}
+
+function unableToConfirm() {
+  uomState.source = 'unconfirmed';
+  uomState.status = 'unconfirmed';
+  uomState.uom1 = null; uomState.uom2 = null; uomState.uom3 = null;
+  const card = document.getElementById('char-card');
+  card.querySelectorAll('[class*="char-body"]').forEach(el => el.style.display = 'none');
+  card.querySelector('.char-body-unconfirmed').style.display = '';
+  uomState.status = 'unconfirmed';
+}
+
+function reopenCharacteristics() {
+  // Go back to loaded state if we had master data, else notfound/edit
+  if (uomState.uom1 !== null || (uomState.source !== 'manual' && uomState.source !== 'unconfirmed')) {
+    // Re-fetch to restore
+    lookupCharacteristics(ndcConfirmed);
+  } else {
+    setCharState('notfound');
+  }
+}
+
+// ── Flag toggle helpers ──
+function setFlag(field, value) {
+  uomState[field] = value;
+  // Update all instances of buttons for this flag (loaded + notfound states)
+  const prefix = field === 'isTempControl' ? 'flag-temp' : 'flag-hazmat';
+  ['', '-nf'].forEach(suffix => {
+    const yesBtn = document.getElementById(prefix + '-yes' + suffix);
+    const noBtn  = document.getElementById(prefix + '-no'  + suffix);
+    const box    = document.getElementById(prefix + '-box' + suffix);
+    if (!yesBtn) return;
+    yesBtn.classList.toggle('active', value === true);
+    noBtn.classList.toggle('active',  value === false);
+    if (box) {
+      box.classList.toggle('flag-yes', value === true);
+      box.classList.toggle('flag-no',  value === false);
+      box.classList.toggle('flag-box', true);
+    }
+  });
+}
+
+function populateFlagButtons() {
+  if (uomState.isTempControl !== null) setFlag('isTempControl', uomState.isTempControl);
+  if (uomState.isHazmat !== null)      setFlag('isHazmat',      uomState.isHazmat);
+}
+
+// ── Barcode input ──
+function onBarcodeKey(e) {
+  if (e.key === 'Enter') saveScan();
+}
+
+function clearBarcode() {
+  document.getElementById('input-barcode').value = '';
+  document.getElementById('input-barcode').focus();
+  hideFeedback();
+  hideGtinDisplay();
+}
+
+// ── Save ──
+async function saveScan() {
+  if (!ndcConfirmed) {
+    document.getElementById('ndc-required-warn').textContent = 'NDC-11 is required';
+    document.getElementById('ndc-required-warn').classList.add('visible');
+    document.getElementById('input-ndc').focus();
+    return;
+  }
+  if (!selectedBarcodeType) {
+    showFeedback('Select Outer, Inner, or Other first.', false);
+    return;
+  }
+  const rawInput = document.getElementById('input-barcode').value.trim();
+  if (!rawInput) return;
+
+  const parsed = parseBarcode(rawInput);
+
+  const now = new Date();
+  const record = {
+    scanned_by:    userName,
+    mode:                  validateState.scanMode || 'collect',
+    package_availability:  validateState.packageAvailability,
+    enum:          document.getElementById('input-enum').value.trim() || null,
+    ndc:           ndcConfirmed,
+    barcode_type:  selectedBarcodeType,
+    barcode_value: parsed.cleanValue,
+    symbology:     parsed.symbology,
+    aim_id:        parsed.aimId,
+    gtin:          parsed.gtin,
+    gtin_valid:    parsed.gtinValid,
+    upc_valid:     parsed.upcValid,
+    uom1:          uomState.uom1,
+    uom2:          uomState.uom2,
+    uom3:          uomState.uom3,
+    uom_confirmed:          uomState.status === 'confirmed',
+    uom_source:             uomState.source || 'unconfirmed',
+    is_temperature_control: uomState.isTempControl,
+    is_hazmat:              uomState.isHazmat,
+    notes:         document.getElementById('input-notes').value.trim() || null,
+    scanned_at:    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    timestamp:     now.toISOString()
+  };
+
+  // Check for duplicate within current NDC session
+  const isDuplicate = sessionScans.some(s =>
+    s.ndc === record.ndc &&
+    s.barcode_value === record.barcode_value &&
+    s.barcode_type === record.barcode_type
+  );
+
+  // Always persist locally
+  const local = JSON.parse(localStorage.getItem('rxscanner_local') || '[]');
+  local.push(record);
+  localStorage.setItem('rxscanner_local', JSON.stringify(local));
+
+  // Try Supabase
+  if (navigator.onLine) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/scans`, {
+        method: 'POST', headers: sbHeaders(), body: JSON.stringify(record)
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Supabase POST error', res.status, errText);
+        throw new Error('HTTP ' + res.status + ' — ' + errText);
+      }
+      const gtinInfo = parsed.gtin
+        ? ` · GTIN ${parsed.gtin}${parsed.upcValid ? ' (UPC-A ✓)' : parsed.gtinValid ? ' (valid)' : ' (check digit FAIL)'}`
+        : '';
+      if (isDuplicate) {
+        showFeedback(`⚠ Duplicate — this barcode was already scanned for this NDC`, 'warn');
+      } else {
+        showFeedback(`✓ Saved — ${parsed.symbology} / ${parsed.cleanValue}${gtinInfo}`, true);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+      enqueuePending(record);
+      showFeedback('⚠ Saved locally — ' + err.message, false);
+    }
+  } else {
+    enqueuePending(record);
+    showFeedback('⚠ Saved locally (offline)', false);
+  }
+
+  // Update session
+  sessionScans.unshift(record);
+  document.getElementById('session-count').textContent = sessionScans.length;
+  document.getElementById('stat-last').textContent = record.scanned_at;
+  document.getElementById('next-item-btn').classList.add('visible');
+
+  // Reset for next barcode — keep type selected, just clear the value and refocus
+  document.getElementById('input-barcode').value = '';
+  document.getElementById('input-barcode').focus();
+
+  // Show GTIN if recognised
+  showGtinDisplay(parsed);
+
+  updateMiniList();
+  updateSyncBanner();
+}
+
+function enqueuePending(rec) {
+  const p = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  p.push(rec);
+  localStorage.setItem('rxscanner_pending', JSON.stringify(p));
+}
+
+// ── Sync pending ──
+async function syncPending() {
+  const p = JSON.parse(localStorage.getItem('rxscanner_pending') || '[]');
+  let failed = [];
+  for (const rec of p) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/scans`, {
+        method: 'POST', headers: sbHeaders(), body: JSON.stringify(rec)
+      });
+      if (!res.ok) throw new Error();
+    } catch { failed.push(rec); }
+  }
+  localStorage.setItem('rxscanner_pending', JSON.stringify(failed));
+  updateSyncBanner();
+}
+
+// ── Feedback ──
+let feedbackTimer;
+function showFeedback(msg, state) {
+  const el = document.getElementById('scan-feedback');
+  el.className = state === true ? 'success' : state === 'warn' ? 'warn' : 'error';
+  el.textContent = msg;
+  clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(hideFeedback, 5000);
+}
+function hideFeedback() {
+  const el = document.getElementById('scan-feedback');
+  el.className = '';
+  el.style.display = 'none';
+  setTimeout(() => el.style.display = '', 20);
+}
+
+function showGtinDisplay(parsed) {
+  const el = document.getElementById('gtin-display');
+  if (!parsed.gtin) { el.style.display = 'none'; return; }
+  const validMark = parsed.upcValid  ? ' <span style="color:var(--green)">✓ Valid UPC-A</span>'
+                  : parsed.gtinValid ? ' <span style="color:var(--green)">✓ Valid</span>'
+                  : ' <span style="color:var(--red)">✗ Check digit fail</span>';
+  const symLine = parsed.symbology && parsed.symbology !== 'Connected reader'
+    ? `<span style="opacity:0.7"> · ${parsed.symbology}</span>` : '';
+  el.innerHTML = `⬡ GTIN: <strong>${parsed.gtin}</strong>${validMark}${symLine}`;
+  el.style.display = '';
+}
+
+function hideGtinDisplay() {
+  document.getElementById('gtin-display').style.display = 'none';
+}
+
+// ── Next item ──
+function nextItem() {
+  clearValidateBarcode && clearValidateBarcode();
+  validateState = { rawBarcode: null, parsedGtin: null, parsedUpc: null,
+    matchedNdc: null, matchStatus: null, packageAvailability: null,
+    scanMode: currentMode === 'validate' ? null : 'collect' };
+  clearNDC();  // clearNDC already calls resetCharacteristics
+  document.getElementById('input-enum').value = '';
+  document.getElementById('input-notes').value = '';
+  document.getElementById('input-barcode').value = '';
+  lockBarcode();
+  hideFeedback();
+  hideGtinDisplay();
+  document.getElementById('next-item-btn').classList.remove('visible');
+  document.getElementById('stat-ndc').textContent = '—';
+  document.getElementById('input-ndc').focus();
+}
+
+function resetScanState() {
+  clearNDC();
+  document.getElementById('input-enum').value = '';
+  document.getElementById('input-notes').value = '';
+  lockBarcode();
+  hideFeedback();
+  document.getElementById('next-item-btn').classList.remove('visible');
+  document.getElementById('stat-ndc').textContent = '—';
+  document.getElementById('stat-last').textContent = '—';
+}
+
+// ── Mini list ──
+function updateMiniList() {
+  const el = document.getElementById('mini-list');
+  if (!sessionScans.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:8px 0">No scans yet this session.</div>';
+    return;
+  }
+  el.innerHTML = sessionScans.slice(0, 8).map(s => `
+    <div class="mini-item">
+      <span class="ndc-val">${s.ndc || '—'}</span>
+      <span class="bc">${s.barcode_value}</span>
+      <span>${s.scanned_at}</span>
+    </div>`).join('');
+}
+
+// ── Records ──
+async function loadRecords() {
+  document.getElementById('records-tbody').innerHTML =
+    '<tr class="empty-row"><td colspan="8">Loading…</td></tr>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scans?order=created_at.desc&limit=2000`,
+      { headers: sbHeaders() }
+    );
+    allRecords = await res.json();
+  } catch {
+    allRecords = JSON.parse(localStorage.getItem('rxscanner_local') || '[]');
+  }
+  document.getElementById('metric-total').textContent = allRecords.length;
+  document.getElementById('metric-ndcs').textContent = new Set(allRecords.map(r => r.ndc).filter(Boolean)).size;
+  document.getElementById('metric-session').textContent = sessionScans.length;
+  renderRecordsTable();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  renderRecordsTable();
+}
+
+function renderRecordsTable() {
+  const f = document.getElementById('filter-input').value.toLowerCase();
+  let rows = allRecords.filter(r =>
+    !f ||
+    (r.ndc           || '').toLowerCase().includes(f) ||
+    (r.barcode_value || '').toLowerCase().includes(f) ||
+    (r.enum          || '').toLowerCase().includes(f) ||
+    (r.scanned_by    || '').toLowerCase().includes(f)
+  );
+  rows.sort((a, b) => {
+    const av = a[sortCol] || '', bv = b[sortCol] || '';
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+  const tbody = document.getElementById('records-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No records found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const dt = r.timestamp ? new Date(r.timestamp) : null;
+    const timeStr = dt
+      ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : (r.scanned_at || '');
+    let gtinCell = r.gtin || '';
+    if (gtinCell) {
+      if (r.upc_valid)   gtinCell += ' <span style="color:var(--green);font-size:10px">UPC✓</span>';
+      else if (r.gtin_valid)  gtinCell += ' <span style="color:var(--green);font-size:10px">✓</span>';
+      else if (r.gtin_valid === false) gtinCell += ' <span style="color:var(--red);font-size:10px">✗</span>';
+    }
+    return `<tr>
+      <td>${timeStr}</td>
+      <td class="ndc-val">${r.ndc || ''}</td>
+      <td>${r.barcode_type || ''}</td>
+      <td class="mono-val">${r.barcode_value || ''}</td>
+      <td class="mono-val">${gtinCell}</td>
+      <td style="color:var(--text-dim)">${r.symbology || ''}</td>
+      <td>${r.scanned_by || ''}</td>
+      <td style="color:var(--text-muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.notes || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  const f = document.getElementById('filter-input').value.toLowerCase();
+  const rows = allRecords.filter(r =>
+    !f ||
+    (r.ndc||'').toLowerCase().includes(f) ||
+    (r.barcode_value||'').toLowerCase().includes(f) ||
+    (r.enum||'').toLowerCase().includes(f) ||
+    (r.scanned_by||'').toLowerCase().includes(f)
+  );
+  const cols = ['timestamp','ndc','barcode_type','barcode_value','gtin','gtin_valid','upc_valid','aim_id','symbology','scanned_by','notes','uom1','uom2','uom3','uom_confirmed','uom_source','is_temperature_control','is_hazmat','mode','package_availability'];
+  const csv = [cols.join(','), ...rows.map(r =>
+    cols.map(c => JSON.stringify(r[c] || '')).join(',')
+  )].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `rx-scans-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
