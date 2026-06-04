@@ -861,8 +861,9 @@
 
     <div class="card">
       <div class="card-title">⬡ Scan Item Barcode</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        Scan any barcode on the item — GTIN, UPC, or DataMatrix.
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+        <span>Scan any barcode on the item — GTIN, UPC, or DataMatrix.</span>
+        <span id="refdata-status" style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">loading ref data…</span>
       </div>
       <div class="input-wrap">
         <input type="text" id="input-validate-barcode"
@@ -1520,13 +1521,25 @@ function unlockBarcode() {
 
 // ── Reference data loader ──
 async function loadRefData() {
+  refData = [];
+  const pageSize = 1000;
+  let offset = 0;
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ndc_gtin_map?select=ndc,scan_id,id_type&limit=10000`,
-      { headers: sbHeaders() }
-    );
-    refData = await res.json();
+    while (true) {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/ndc_gtin_map?select=ndc,scan_id,id_type&limit=${pageSize}&offset=${offset}`,
+        { headers: sbHeaders() }
+      );
+      const page = await res.json();
+      if (!Array.isArray(page) || page.length === 0) break;
+      refData = refData.concat(page);
+      if (page.length < pageSize) break;  // last page
+      offset += pageSize;
+    }
     console.log(`Loaded ${refData.length} reference records`);
+    // Update debug indicator if on validate screen
+    const el = document.getElementById('refdata-status');
+    if (el) el.textContent = `${refData.length} records loaded`;
   } catch(e) {
     console.error('Failed to load reference data', e);
     refData = [];
