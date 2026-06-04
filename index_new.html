@@ -1562,7 +1562,7 @@ function processValidateScan() {
 
   if (parsed.gtin) {
     // Match GTIN1 and GTIN2 (both are 14-digit normalized GTINs at different packaging levels)
-    refData.filter(r => (r.id_type === 'GTIN1' || r.id_type === 'GTIN2') && r.scan_id === parsed.gtin)
+    refData.filter(r => (r.id_type === 'GTIN' || r.id_type === 'GTIN1' || r.id_type === 'GTIN2') && r.scan_id === parsed.gtin)
            .forEach(r => matchedNdcs.add(r.ndc));
   }
   if (validateState.parsedUpc) {
