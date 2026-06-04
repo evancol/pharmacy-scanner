@@ -1553,15 +1553,36 @@ function processValidateScan() {
   const parsed = parseBarcode(raw);
   validateState.rawBarcode  = raw;
   validateState.parsedGtin  = parsed.gtin;
-  // For UPC matching: if 12-digit clean value
   validateState.parsedUpc   = (parsed.upcValid && parsed.cleanValue.length === 12)
     ? parsed.cleanValue : null;
+
+  // ── Debug panel ──
+  const debugLines = [
+    `📥 ref records loaded: ${refData.length}`,
+    `📷 raw input: ${raw}`,
+    `🔖 AIM ID: ${parsed.aimId || 'none'}`,
+    `🧹 clean value: ${parsed.cleanValue}`,
+    `⬡ parsed GTIN: ${parsed.gtin || 'none'}`,
+    `🔍 UPC: ${validateState.parsedUpc || 'none'}`,
+  ];
+  if (refData.length > 0) {
+    // Show a sample of what's in refData
+    const sample = refData.slice(0, 3).map(r => `${r.id_type}:${r.scan_id}→${r.ndc}`).join(', ');
+    debugLines.push(`📋 sample rows: ${sample}`);
+    // Show id_type values present
+    const types = [...new Set(refData.map(r => r.id_type))].join(', ');
+    debugLines.push(`🏷 id_types in data: ${types}`);
+  }
+  document.getElementById('validate-result').innerHTML = `
+    <div style="margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.8">
+      ${debugLines.map(l => `<div>${l}</div>`).join('')}
+    </div>`;
 
   // Search refData in memory
   let matchedNdcs = new Set();
 
   if (parsed.gtin) {
-    // Match GTIN1 and GTIN2 (both are 14-digit normalized GTINs at different packaging levels)
     refData.filter(r => (r.id_type === 'GTIN' || r.id_type === 'GTIN1' || r.id_type === 'GTIN2') && r.scan_id === parsed.gtin)
            .forEach(r => matchedNdcs.add(r.ndc));
   }
@@ -1584,7 +1605,11 @@ function processValidateScan() {
   } else {
     validateState.matchStatus  = 'notfound';
     validateState.scanMode     = 'validate_not_found';
+    // Show debug before notfound UI
+    const dbg = document.getElementById('validate-result').innerHTML;
     showValidateNotFound(parsed);
+    document.getElementById('validate-result').innerHTML =
+      dbg + document.getElementById('validate-result').innerHTML;
   }
 }
 
