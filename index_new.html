@@ -1559,7 +1559,7 @@ function clearValidateBarcode() {
   document.getElementById('input-validate-barcode').focus();
 }
 
-function processValidateScan() {
+async function processValidateScan() {
   const raw = document.getElementById('input-validate-barcode').value.trim();
   if (!raw) return;
 
@@ -1569,32 +1569,8 @@ function processValidateScan() {
   validateState.parsedUpc   = (parsed.upcValid && parsed.cleanValue.length === 12)
     ? parsed.cleanValue : null;
 
-  // ── Debug panel ──
-  const debugLines = [
-    `📥 ref records loaded: ${refData.length}`,
-    `📷 raw input: ${raw}`,
-    `🔖 AIM ID: ${parsed.aimId || 'none'}`,
-    `🧹 clean value: ${parsed.cleanValue}`,
-    `⬡ parsed GTIN: ${parsed.gtin || 'none'}`,
-    `🔍 UPC: ${validateState.parsedUpc || 'none'}`,
-  ];
-  if (refData.length > 0) {
-    // Show a sample of what's in refData
-    const sample = refData.slice(0, 3).map(r => `${r.id_type}:${r.scan_id}→${r.ndc}`).join(', ');
-    debugLines.push(`📋 sample rows: ${sample}`);
-    // Show id_type values present
-    const types = [...new Set(refData.map(r => r.id_type))].join(', ');
-    debugLines.push(`🏷 id_types in data: ${types}`);
-  }
-  document.getElementById('validate-result').innerHTML = `
-    <div style="margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);
-      border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.8">
-      ${debugLines.map(l => `<div>${l}</div>`).join('')}
-    </div>`;
-
   // Search refData in memory
   let matchedNdcs = new Set();
-
   if (parsed.gtin) {
     refData.filter(r => (r.id_type === 'GTIN' || r.id_type === 'GTIN1' || r.id_type === 'GTIN2') && r.scan_id === parsed.gtin)
            .forEach(r => matchedNdcs.add(r.ndc));
@@ -1610,19 +1586,51 @@ function processValidateScan() {
     validateState.matchedNdc   = ndcList[0];
     validateState.matchStatus  = 'matched';
     validateState.scanMode     = 'validate_matched';
+    const row = refData.find(r => r.ndc === ndcList[0]);
+    validateState.matchedSku   = row ? row.sku : null;
+    // Clear input ready for next scan
+    document.getElementById('input-validate-barcode').value = '';
     showValidateMatched(ndcList[0], parsed);
   } else if (ndcList.length > 1) {
     validateState.matchStatus  = 'conflict';
     validateState.scanMode     = 'validate_conflict';
+    validateState.matchedNdc   = null;
+    validateState.matchedSku   = null;
     showValidateConflict(ndcList, parsed);
   } else {
     validateState.matchStatus  = 'notfound';
     validateState.scanMode     = 'validate_not_found';
-    // Show debug before notfound UI
-    const dbg = document.getElementById('validate-result').innerHTML;
+    validateState.matchedNdc   = null;
+    validateState.matchedSku   = null;
     showValidateNotFound(parsed);
-    document.getElementById('validate-result').innerHTML =
-      dbg + document.getElementById('validate-result').innerHTML;
+  }
+
+  // Log attempt to scan_attempts table
+  logScanAttempt(parsed);
+}
+
+async function logScanAttempt(parsed) {
+  const now = new Date();
+  const attempt = {
+    scanned_by:   userName,
+    raw_barcode:  validateState.rawBarcode,
+    aim_id:       parsed.aimId,
+    parsed_gtin:  parsed.gtin,
+    parsed_upc:   validateState.parsedUpc,
+    match_status: validateState.matchStatus,
+    matched_ndc:  validateState.matchedNdc,
+    matched_sku:  validateState.matchedSku,
+    timestamp:    now.toISOString(),
+  };
+  if (!navigator.onLine) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/scan_attempts`, {
+      method: 'POST',
+      headers: sbHeaders(),
+      body: JSON.stringify(attempt)
+    });
+  } catch(e) {
+    console.error('Failed to log scan attempt', e);
   }
 }
 
